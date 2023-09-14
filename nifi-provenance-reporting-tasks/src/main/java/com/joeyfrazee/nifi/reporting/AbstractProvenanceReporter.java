@@ -20,7 +20,6 @@ import org.apache.nifi.annotation.behavior.Stateful;
 import org.apache.nifi.components.AllowableValue;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.components.state.Scope;
-import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.provenance.ProvenanceEventRecord;
 import org.apache.nifi.provenance.ProvenanceEventType;
@@ -205,7 +204,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
         }));
     }
 
-    public abstract boolean indexEvent(final Map<String, Object> event, final ReportingContext context) throws IOException;
+    public abstract void indexEvent(final Map<String, Object> event, final ReportingContext context) throws IOException;
 
     @Override
     public void onTrigger(final ReportingContext context) {
@@ -225,6 +224,4 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
             getLogger().error("Failed to process provenance events", e);
         }
     }
-
-    public abstract boolean indexEvent(Map<String, Object> event, ProcessContext context) throws IOException;
 }
