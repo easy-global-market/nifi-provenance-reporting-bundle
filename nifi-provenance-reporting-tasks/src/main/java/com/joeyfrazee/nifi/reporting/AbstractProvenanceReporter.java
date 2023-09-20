@@ -46,7 +46,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
             "Start reading provenance Events from the end of the stream, ignoring old events");
 
     static final List<String> DEFAULT_DETAILS_AS_ERROR = Arrays.asList(
-            "Auto-Terminated by failure Relationship"
+            "Auto-Terminated by Failure Relationship", "Auto-Terminated by No Retry Relationship"
     );
 
     static final PropertyDescriptor START_POSITION = new PropertyDescriptor.Builder().name("start-position")
@@ -64,7 +64,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
     static final PropertyDescriptor DETAILS_AS_ERROR = new PropertyDescriptor.Builder().name("details-as-error")
             .displayName("Details as error")
             .description("Specifies a comma-separated list of details messages in the provenance event "
-                    + "that will be considered as errors")
+                    + "that will be considered as errors (comparison is case-insensitive)")
             .defaultValue(String.join(",", DEFAULT_DETAILS_AS_ERROR))
             .addValidator(StandardValidators.createListValidator(true, true, StandardValidators.NON_BLANK_VALIDATOR)).build();
 
@@ -103,7 +103,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
         createConsumer(context);
 
         final List<String> detailsAsError =
-                Arrays.asList(context.getProperty(DETAILS_AS_ERROR).getValue().split(","));
+                Arrays.asList(context.getProperty(DETAILS_AS_ERROR).getValue().toLowerCase().split(","));
 
         consumer.consumeEvents(context, ((componentMapHolder, provenanceEventRecords) -> {
             getLogger().debug("Starting to consume events");
@@ -182,7 +182,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
                     source.put("details", details);
                 }
 
-                if (detailsAsError.contains(details))
+                if (details != null && detailsAsError.contains(details.toLowerCase()))
                     source.put("status", "Error");
                 else
                     source.put("status", "Info");
