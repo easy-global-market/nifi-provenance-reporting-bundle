@@ -244,11 +244,11 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         return Charset.forName(context.getProperty(INPUT_CHARACTER_SET).getValue());
     }
 
-    private String getMessage(final Map<String, Object> event) {
+    private String composeMessageContent(final Map<String, Object> event) {
         final StringBuilder message = new StringBuilder();
-        for (final Map.Entry<String, Object> attribute : event.entrySet()) {
+        event.entrySet().stream().sorted().forEach(attribute -> {
             message.append(String.format("\n%1$s = '%2$s'", attribute.getKey(), attribute.getValue()));
-        }
+        });
         message.append("\n");
         return message.toString();
     }
@@ -268,7 +268,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
     public void sendErrorEmail(Map<String, Object> event, ReportingContext context) throws MessagingException {
 
         String emailSubject = "Error occurred in "
-                + "processor " + event.get("component_name")
+                + "processor " + event.get("component_name") + " "
                 + "in process group " + event.get("process_group_name");
 
         // Create a new email message for the error notification
@@ -285,7 +285,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             this.setMessageHeader("X-Mailer", context.getProperty(HEADER_XMAILER).getValue(), message);
             message.setSubject(emailSubject);
 
-            final String messageText = getMessage(event);
+            final String messageText = composeMessageContent(event);
 
             final String contentType = context.getProperty(CONTENT_TYPE).getValue();
             final Charset charset = getCharset(context);
