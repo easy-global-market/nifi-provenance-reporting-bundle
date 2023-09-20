@@ -246,8 +246,9 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
     private String composeMessageContent(final Map<String, Object> event) {
         final StringBuilder message = new StringBuilder();
-        event.entrySet().stream().sorted().forEach(attribute -> {
-            message.append(String.format("\n%1$s = '%2$s'", attribute.getKey(), attribute.getValue()));
+        event.keySet().stream().sorted().forEach(attributeName -> {
+            Object attributeValue = event.get(attributeName);
+            message.append(String.format("\n%1$s = '%2$s'", attributeName, attributeValue));
         });
         message.append("\n");
         return message.toString();

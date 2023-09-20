@@ -104,6 +104,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
 
         final List<String> detailsAsError =
                 Arrays.asList(context.getProperty(DETAILS_AS_ERROR).getValue().toLowerCase().split(","));
+        final String nifiUrl = context.getProperty(NIFI_URL).getValue();
 
         consumer.consumeEvents(context, ((componentMapHolder, provenanceEventRecords) -> {
             getLogger().debug("Starting to consume events");
@@ -148,7 +149,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
                     source.put("component_id", componentId);
                     source.put(
                         "component_url",
-                        NIFI_URL + "?processGroupId=" + processGroupId + "&componentsIds=" + componentId
+                        nifiUrl + "?processGroupId=" + processGroupId + "&componentsIds=" + componentId
                     );
                 }
 
