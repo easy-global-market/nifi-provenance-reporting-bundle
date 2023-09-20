@@ -68,6 +68,13 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
             .defaultValue(String.join(",", DEFAULT_DETAILS_AS_ERROR))
             .addValidator(StandardValidators.createListValidator(true, true, StandardValidators.NON_BLANK_VALIDATOR)).build();
 
+    static final PropertyDescriptor NIFI_URL = new PropertyDescriptor.Builder().name("nifi-url")
+            .displayName("NiFi URL")
+            .description("Specifies the URL of the current NiFi instance. It is later used to create links pointing "
+                    + "to specific processors and process groups")
+            .defaultValue("https://localhost:443")
+            .addValidator(StandardValidators.URL_VALIDATOR).build();
+
     protected List<PropertyDescriptor> descriptors;
 
     private volatile ProvenanceEventConsumer consumer;
@@ -78,6 +85,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
         descriptors.add(START_POSITION);
         descriptors.add(BATCH_SIZE);
         descriptors.add(DETAILS_AS_ERROR);
+        descriptors.add(NIFI_URL);
         return descriptors;
     }
 
@@ -138,6 +146,10 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
                 final String componentId = e.getComponentId();
                 if (componentId != null) {
                     source.put("component_id", componentId);
+                    source.put(
+                        "component_url",
+                        NIFI_URL + "?processGroupId=" + processGroupId + "&componentsIds=" + componentId
+                    );
                 }
 
                 final String componentType = e.getComponentType();
