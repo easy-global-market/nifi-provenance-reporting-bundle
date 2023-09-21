@@ -14,4 +14,3 @@
 # limitations under the License.
 com.joeyfrazee.nifi.reporting.ElasticsearchProvenanceReporter
 com.joeyfrazee.nifi.reporting.EmailProvenanceReporter
-com.joeyfrazee.nifi.reporting.HttpProvenanceReporter
