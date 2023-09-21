@@ -79,6 +79,8 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
 
     private volatile ProvenanceEventConsumer consumer;
 
+    final SimpleDateFormat sdf = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+
     @Override
     public List<PropertyDescriptor> getSupportedPropertyDescriptors() {
         final List<PropertyDescriptor> descriptors = new ArrayList<>();
@@ -111,9 +113,8 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
             for (final ProvenanceEventRecord e: provenanceEventRecords) {
                 getLogger().debug("Processing provenance event: {}", e.getEventId());
                 final Map<String, Object> source = new HashMap<>();
-                final SimpleDateFormat ft = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 
-                source.put("@timestamp", ft.format(new Date()));
+                source.put("@timestamp", sdf.format(new Date()));
                 source.put("event_id", e.getEventId());
                 source.put("event_time", new Date(e.getEventTime()));
                 source.put("entry_date", new Date(e.getFlowFileEntryDate()));
@@ -198,15 +199,15 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
                     source.put("source_queue_id", sourceQueueId);
                 }
 
-                final Map<String, String> attributes = new HashMap<>();
-
                 final Map<String, String> updatedAttributes = e.getUpdatedAttributes();
                 if (updatedAttributes != null && !updatedAttributes.isEmpty()) {
-                    getLogger().debug("Adding updated attributes: {}", updatedAttributes);
-                    attributes.putAll(updatedAttributes);
+                    source.put("updatedAttributes", updatedAttributes);
                 }
 
-                source.put("attributes", attributes);
+                final Map<String, String> previousAttributes = e.getPreviousAttributes();
+                if (previousAttributes != null && !previousAttributes.isEmpty()) {
+                    source.put("previousAttributes", previousAttributes);
+                }
 
                 try {
                     indexEvent(source, context);

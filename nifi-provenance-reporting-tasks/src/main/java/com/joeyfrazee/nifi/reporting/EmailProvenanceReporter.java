@@ -246,10 +246,34 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
     private String composeMessageContent(final Map<String, Object> event) {
         final StringBuilder message = new StringBuilder();
-        event.keySet().stream().sorted().forEach(attributeName -> {
-            Object attributeValue = event.get(attributeName);
-            message.append(String.format("\n%1$s = '%2$s'", attributeName, attributeValue));
-        });
+
+        message.append("Affected processor:\n")
+            .append("\tProcessor name: ").append(event.get("component_name")).append("\n")
+            .append("\tProcessor type: ").append(event.get("component_type")).append("\n")
+            .append("\tProcess group: ").append(event.get("process_group_name")).append("\n")
+            .append("\tURL: ").append(event.get("component_url")).append("\n");
+
+        message.append("\n");
+        message.append("Error information:\n")
+            .append("\tDetails: ").append(event.get("details")).append("\n")
+            .append("\tEvent type: ").append(event.get("event_type")).append("\n");
+
+        if (event.containsKey("updatedAttributes")) {
+            Map<String, String> updatedAttributes = (Map<String, String>) event.get("updatedAttributes");
+            message.append("\nFlow file - Updated attributes:\n");
+            updatedAttributes.keySet().stream().sorted().forEach(attributeName ->
+                message.append(String.format("\t%1$s: %2$s\n", attributeName, updatedAttributes.get(attributeName)))
+            );
+        }
+
+        if (event.containsKey("previousAttributes")) {
+            Map<String, String> previousAttributes = (Map<String, String>) event.get("previousAttributes");
+            message.append("\nFlow file - Previous attributes:\n");
+            previousAttributes.keySet().stream().sorted().forEach(attributeName ->
+                message.append(String.format("\t%1$s: %2$s\n", attributeName, previousAttributes.get(attributeName)))
+            );
+        }
+
         message.append("\n");
         return message.toString();
     }
@@ -268,11 +292,8 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
     public void sendErrorEmail(Map<String, Object> event, ReportingContext context) throws MessagingException {
 
-        String emailSubject = "Error occurred in "
-                + "processor " + event.get("component_name") + " "
+        String emailSubject = "Error occurred in processor " + event.get("component_name") + " "
                 + "in process group " + event.get("process_group_name");
-
-        // Create a new email message for the error notification
 
         final Properties properties = new Properties();
         final Session mailSession = this.createMailSession(properties, context);
