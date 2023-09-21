@@ -121,6 +121,8 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
                 source.put("lineage_start_date", new Date(e.getLineageStartDate()));
                 source.put("file_size", e.getFileSize());
 
+                e.getContentClaimContainer();
+
                 final String componentName = componentMapHolder.getComponentName(e.getComponentId());
                 final String processGroupId = componentMapHolder.getProcessGroupId(e.getComponentId(),
                         e.getComponentType());
@@ -208,6 +210,17 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
                 if (previousAttributes != null && !previousAttributes.isEmpty()) {
                     source.put("previousAttributes", previousAttributes);
                 }
+
+                // TO get URL Prefix, we just remove the /nifi from the end of the URL
+                final String urlPrefix = nifiUrl.substring(0, nifiUrl.length() - "/nifi".length());
+                final String downloadContentUri = urlPrefix + "/nifi-api/provenance-events/" + e.getEventId() + "/content";
+                source.put("download_input_content_uri", downloadContentUri + "/input");
+                source.put("download_output_content_uri", downloadContentUri + "/output");
+                final String viewContentUri =
+                    urlPrefix + "/nifi-content-viewer/" +
+                    "?ref=" + urlPrefix + "/nifi-api/provenance-events/" + e.getEventId() + "/content";
+                source.put("view_input_content_uri", viewContentUri + "/input");
+                source.put("view_output_content_uri", viewContentUri + "/output");
 
                 try {
                     indexEvent(source, context);

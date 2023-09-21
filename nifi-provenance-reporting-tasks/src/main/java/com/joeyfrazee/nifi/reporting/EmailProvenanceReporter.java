@@ -274,6 +274,12 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             );
         }
 
+        message.append("\nFlow file - content:\n")
+            .append("\tDownload input: ").append(event.get("download_input_content_uri")).append("\n")
+            .append("\tDownload output: ").append(event.get("download_output_content_uri")).append("\n")
+            .append("\tView input: ").append(event.get("view_input_content_uri")).append("\n")
+            .append("\tView output: ").append(event.get("view_output_content_uri")).append("\n");
+
         message.append("\n");
         return message.toString();
     }
