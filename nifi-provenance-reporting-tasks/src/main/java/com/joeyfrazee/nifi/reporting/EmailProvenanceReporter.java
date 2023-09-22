@@ -258,16 +258,16 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             .append("\tDetails: ").append(event.get("details")).append("\n")
             .append("\tEvent type: ").append(event.get("event_type")).append("\n");
 
-        if (event.containsKey("updatedAttributes")) {
-            Map<String, String> updatedAttributes = (Map<String, String>) event.get("updatedAttributes");
+        if (event.containsKey("updated_attributes")) {
+            Map<String, String> updatedAttributes = (Map<String, String>) event.get("updated_attributes");
             message.append("\nFlow file - Updated attributes:\n");
             updatedAttributes.keySet().stream().sorted().forEach(attributeName ->
                 message.append(String.format("\t%1$s: %2$s\n", attributeName, updatedAttributes.get(attributeName)))
             );
         }
 
-        if (event.containsKey("previousAttributes")) {
-            Map<String, String> previousAttributes = (Map<String, String>) event.get("previousAttributes");
+        if (event.containsKey("previous_attributes")) {
+            Map<String, String> previousAttributes = (Map<String, String>) event.get("previous_attributes");
             message.append("\nFlow file - Previous attributes:\n");
             previousAttributes.keySet().stream().sorted().forEach(attributeName ->
                 message.append(String.format("\t%1$s: %2$s\n", attributeName, previousAttributes.get(attributeName)))

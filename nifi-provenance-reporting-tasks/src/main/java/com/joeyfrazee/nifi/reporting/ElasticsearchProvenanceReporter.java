@@ -22,6 +22,7 @@ import co.elastic.clients.elasticsearch.core.IndexRequest;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpHost;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
@@ -61,6 +62,7 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
             .build();
 
     private final Map<String, ElasticsearchClient> esClients = new HashMap<>();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private ElasticsearchClient getElasticsearchClient(String elasticsearchUrl) throws MalformedURLException {
         if (esClients.containsKey(elasticsearchUrl))
@@ -90,11 +92,35 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
         final String elasticsearchIndex = context.getProperty(ELASTICSEARCH_INDEX).evaluateAttributeExpressions().getValue();
         final ElasticsearchClient client = getElasticsearchClient(elasticsearchUrl);
         final String id = Long.toString((Long) event.get("event_id"));
+
+        if (!event.containsKey("process_group_name") || !event.containsKey("component_name")) {
+            getLogger().warn("Provenance event has no process group or processor, ignoring");
+            return;
+        }
+
+        Map<String, Object> preparedEvent = new HashMap<>();
+        preparedEvent.put("event_time", event.get("event_time"));
+        preparedEvent.put("component_type", event.get("component_type"));
+        preparedEvent.put("component_url", event.get("component_url"));
+        preparedEvent.put("component_name", event.get("component_name"));
+        preparedEvent.put("process_group_name", event.get("process_group_name"));
+        preparedEvent.put("process_group_id", event.get("process_group_id"));
+        preparedEvent.put("event_type", event.get("event_type"));
+        preparedEvent.put("status", event.get("status"));
+        preparedEvent.put("download_input_content_uri", event.get("download_input_content_uri"));
+        preparedEvent.put("download_output_content_uri", event.get("download_output_content_uri"));
+        preparedEvent.put("view_input_content_uri", event.get("view_input_content_uri"));
+        preparedEvent.put("view_output_content_uri", event.get("view_output_content_uri"));
+        preparedEvent.put("updated_attributes", objectMapper.writeValueAsString(event.get("updated_attributes")));
+        preparedEvent.put("previous_attributes", objectMapper.writeValueAsString(event.get("previous_attributes")));
+        if (event.containsKey("details"))
+            preparedEvent.put("details", event.get("details"));
+
         final IndexRequest<Map<String, Object>> indexRequest = new
                 IndexRequest.Builder<Map<String, Object>>()
                 .index(elasticsearchIndex)
                 .id(id)
-                .document(event)
+                .document(preparedEvent)
                 .build();
         try {
             client.index(indexRequest);

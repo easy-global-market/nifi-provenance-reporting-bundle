@@ -121,8 +121,6 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
                 source.put("lineage_start_date", new Date(e.getLineageStartDate()));
                 source.put("file_size", e.getFileSize());
 
-                e.getContentClaimContainer();
-
                 final String componentName = componentMapHolder.getComponentName(e.getComponentId());
                 final String processGroupId = componentMapHolder.getProcessGroupId(e.getComponentId(),
                         e.getComponentType());
@@ -203,12 +201,12 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
 
                 final Map<String, String> updatedAttributes = e.getUpdatedAttributes();
                 if (updatedAttributes != null && !updatedAttributes.isEmpty()) {
-                    source.put("updatedAttributes", updatedAttributes);
+                    source.put("updated_attributes", updatedAttributes);
                 }
 
                 final Map<String, String> previousAttributes = e.getPreviousAttributes();
                 if (previousAttributes != null && !previousAttributes.isEmpty()) {
-                    source.put("previousAttributes", previousAttributes);
+                    source.put("previous_attributes", previousAttributes);
                 }
 
                 // TO get URL Prefix, we just remove the /nifi from the end of the URL
