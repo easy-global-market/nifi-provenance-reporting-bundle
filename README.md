@@ -1,26 +1,41 @@
-[![Build Status](https://travis-ci.org/jfrazee/nifi-provenance-reporting-bundle.svg?branch=master)](https://travis-ci.org/jfrazee/nifi-provenance-reporting-bundle)
+# NiFi provenance reporting tasks
 
-# nifi-provenance-reporting-bundle
+[![License: Apache-2.0](https://img.shields.io/github/license/stellio-hub/stellio-context-broker.svg)](https://spdx.org/licenses/Apache-2.0.html)
+![Build](https://github.com/easy-global-market/nifi-provenance-reporting-bundle/actions/workflows/maven.yml/badge.svg)
 
-NiFi provenance reporting tasks.
+This project provides two NiFi reporting tasks to:
+- Send provenance events to Elasticsearch
+- Send provenance events considered as errors by email
 
 ## Table of Contents
 
 - [Installation](#installation)
-- [Tasks](#tasks)
+- [Tasks configuration](#tasks-configuration)
     - [ElasticsearchProvenanceReporter](#elasticsearchprovenancereporter)
-    - [HttpProvenanceReporter](#httpprovenancereporter)
+    - [EmailProvenanceReporter](#emailprovenancereporter)
 - [Todo](#todo)
 
 ## Installation
 
+- Build and package the tasks
+
 ```sh
 $ mvn clean package
-$ cp nifi-provenance-reporting-nar/target/nifi-provenance-reporting-nar-0.0.2-SNAPSHOT.nar $NIFI_HOME/lib
+```
+
+- Copy the artifact to NiFi
+
+```sh
+$ cp nifi-provenance-reporting-nar/target/nifi-provenance-reporting-nar-1.23.2.nar $NIFI_HOME/lib
+```
+
+- Restart NiFi
+
+```sh
 $ nifi restart
 ```
 
-## Tasks
+## Tasks configuration
 
 ### ElasticsearchProvenanceReporter
 
@@ -28,34 +43,47 @@ Reporting task to write provenance events to an Elasticsearch index.
 
 #### Reporting Task Properties
 
-<img src="elasticsearch_provenance_reporter_properties.png" width=600 />
+<img src="docs/images/elasticsearch-reporting-task-configuration.png" width=600 />
 
 #### Example Event
 
-<img src="elasticsearch_provenance_reporter_event.png" width=600 />
+```json
+{
+      "component_name": "RouteOnAttribute",
+      "updated_attributes": "{\"RouteOnAttribute.Route\":\"Entite\"}",
+      "download_input_content_uri": "https://localhost:443/nifi-api/provenance-events/123456/content/input",
+      "process_group_id": "986FEB46-900F-41F9-A75F-483625C00B6C",
+      "component_type": "RouteOnAttribute",
+      "event_type": "ROUTE",
+      "view_input_content_uri": "https://localhost:443/nifi-content-viewer/?ref=https://localhost:443/nifi-api/provenance-events/123456/content/input",
+      "download_output_content_uri": "https://localhost:443/nifi-api/provenance-events/123456/content/output",
+      "component_url": "https://localhost:443/nifi?processGroupId=986FEB46-900F-41F9-A75F-483625C00B6C&componentsIds=4C10F953-C5BE-452F-A212-7E17CC094DC1",
+      "view_output_content_uri": "https://localhost:443/nifi-content-viewer/?ref=https://localhost:443/nifi-api/provenance-events/123456/content/output",
+      "previous_attributes": "{\"PL_Type\":\"Entite\",\"fragment.identifier\":\"8165D09E-944D-4752-A584-1E36F25E24CD\",\"fragment.index\":\"7\",\"mime.type\":\"application/json\",\"PL_ID\":\"ABC_1234\",\"uuid\":\"ADEB4D7D-D86D-4305-8E36-21F2ABCCA350\",\"Entite\":\"EGM\",\"Blocage\":\"1\",\"path\":\"./\",\"filename\":\"2BFDB3F5-AC45-4B01-82B4-C2106F02836B\",\"record.count\":\"1\",\"segment.original.filename\":\"2BFDB3F5-AC45-4B01-82B4-C2106F02836B\",\"fragment.count\":\"50\",\"Libelle\":\"Public light XYZ\"}",
+      "process_group_name": "Public lighting API",
+      "event_time": 1696354054754,
+      "status": "Info"
+  }
+```
 
-### HttpProvenanceReporter
+### EmailProvenanceReporter
 
-Reporting task to POST provenance events to an HTTP web service.
+Reporting task to send provenance events considered as errors by email.
 
 #### Reporting Task Properties
 
-This reporting task can be configured to POST provenance events to an arbitrary web service. Here is an example of using it with Solr (10s commits):
-
-<img src="http_provenance_reporter_properties.png" width=600 />
+<img src="docs/images/email-reporting-task-configuration.png" width=600 />
 
 ## Todo
 
-- Add batching support.
-- Additional adapters:
-    - HDFS
-    - Tinkerpop
-    - NiFi site-to-site
 - Optional inclusion of FlowFile contents.
-- Create provenance event for runs of the reporting task.
-- Example schemas/mappings for data sources (Elasticsearch mapping, Solr schema, JSON schema).
+- Add batching support in email provenance reporter.
 - Add testing.
 
 ## License
 
-Copyright (c) 2016 Joey Frazee. nifi-provenance-reporting-bundle is released under the Apache License Version 2.0.
+This project originated as a fork from an unmaintained project created by Joey Frazee on GitHub (https://github.com/jfrazee/nifi-provenance-reporting-bundle)
+and released under the Apache License Version 2.0.
+
+It has then diverged a lot from the original version, and it now has its own life and roadmap. It is still released under 
+the Apache License Version 2.0.
