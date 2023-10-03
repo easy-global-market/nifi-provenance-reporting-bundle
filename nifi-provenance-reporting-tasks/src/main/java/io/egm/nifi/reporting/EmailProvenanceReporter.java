@@ -1,4 +1,4 @@
-package com.joeyfrazee.nifi.reporting;
+package io.egm.nifi.reporting;
 
 import jakarta.mail.*;
 import jakarta.mail.internet.AddressException;

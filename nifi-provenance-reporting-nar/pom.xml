@@ -17,7 +17,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.joeyfrazee.nifi</groupId>
+        <groupId>io.egm.nifi</groupId>
         <artifactId>nifi-provenance-reporting-bundle</artifactId>
         <version>1.23.2</version>
     </parent>
@@ -31,7 +31,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.joeyfrazee.nifi</groupId>
+            <groupId>io.egm.nifi</groupId>
             <artifactId>nifi-provenance-reporting-tasks</artifactId>
             <version>1.23.2</version>
         </dependency>

@@ -12,5 +12,5 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-com.joeyfrazee.nifi.reporting.ElasticsearchProvenanceReporter
-com.joeyfrazee.nifi.reporting.EmailProvenanceReporter
+io.egm.nifi.reporting.ElasticsearchProvenanceReporter
+io.egm.nifi.reporting.EmailProvenanceReporter
