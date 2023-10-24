@@ -101,4 +101,12 @@
         </plugins>
     </build>
 
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/easy-global-market/nifi-provenance-reporting-bundle</url>
+        </repository>
+    </distributionManagement>
+
 </project>
