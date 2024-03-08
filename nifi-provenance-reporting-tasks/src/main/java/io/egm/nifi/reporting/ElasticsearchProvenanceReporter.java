@@ -101,11 +101,11 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
             return;
         }
 
-        final Long eventTimeMillis = (Long) event.get("event_time");
+        final Date eventTimeMillis = (Date) event.get("event_time");
 
         Map<String, Object> preparedEvent = new HashMap<>();
-        preparedEvent.put("event_time", eventTimeMillis);
-        preparedEvent.put("event_time_iso", sdf.format(new Date(eventTimeMillis)));
+        preparedEvent.put("event_time", event.get("event_time"));
+        preparedEvent.put("event_time_iso", sdf.format(eventTimeMillis));
         preparedEvent.put("component_type", event.get("component_type"));
         preparedEvent.put("component_url", event.get("component_url"));
         preparedEvent.put("component_name", event.get("component_name"));
