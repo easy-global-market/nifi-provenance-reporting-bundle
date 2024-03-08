@@ -19,11 +19,11 @@
     <parent>
         <groupId>io.egm.nifi</groupId>
         <artifactId>nifi-provenance-reporting-bundle</artifactId>
-        <version>1.23.2</version>
+        <version>1.23.2-es8.12</version>
     </parent>
 
     <artifactId>nifi-provenance-reporting-nar</artifactId>
-    <version>1.23.2</version>
+    <version>1.23.2-es8.12</version>
     <packaging>nar</packaging>
     <properties>
         <maven.javadoc.skip>true</maven.javadoc.skip>
@@ -34,7 +34,7 @@
         <dependency>
             <groupId>io.egm.nifi</groupId>
             <artifactId>nifi-provenance-reporting-tasks</artifactId>
-            <version>1.23.2</version>
+            <version>1.23.2-es8.12</version>
         </dependency>
     </dependencies>
 
