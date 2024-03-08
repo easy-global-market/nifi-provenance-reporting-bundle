@@ -46,7 +46,9 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
             "Start reading provenance Events from the end of the stream, ignoring old events");
 
     static final List<String> DEFAULT_DETAILS_AS_ERROR = Arrays.asList(
-            "Auto-Terminated by Failure Relationship", "Auto-Terminated by No Retry Relationship"
+            "Auto-Terminated by Failure Relationship", "Auto-Terminated by No Retry Relationship",
+            "Auto-Terminated by Retry Relationship", "Auto-Terminated by invalid Relationship",
+            "Auto-Terminated by timeout Relationship"
     );
 
     static final PropertyDescriptor START_POSITION = new PropertyDescriptor.Builder().name("start-position")
