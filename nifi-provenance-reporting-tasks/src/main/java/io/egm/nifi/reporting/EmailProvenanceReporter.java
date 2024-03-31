@@ -27,32 +27,35 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             .name("SMTP Hostname")
             .description("The hostname of the SMTP host")
             .required(true)
-            .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
     public static final PropertyDescriptor SMTP_PORT = new PropertyDescriptor.Builder()
             .name("SMTP Port")
-            .description("The Port used for SMTP communications")
+            .description("The port used for SMTP communications")
             .required(true)
             .defaultValue("25")
-            .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
             .addValidator(StandardValidators.PORT_VALIDATOR)
+            .build();
+
+    public static final PropertyDescriptor SMTP_AUTH = new PropertyDescriptor.Builder()
+            .name("SMTP Auth")
+            .description("Flag indicating whether authentication should be used")
+            .required(true)
+            .addValidator(StandardValidators.BOOLEAN_VALIDATOR)
+            .defaultValue("true")
             .build();
 
     public static final PropertyDescriptor SMTP_USERNAME = new PropertyDescriptor.Builder()
             .name("SMTP Username")
             .description("Username for the SMTP account")
-            .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .required(false)
             .build();
 
-
     public static final PropertyDescriptor SMTP_PASSWORD = new PropertyDescriptor.Builder()
             .name("SMTP Password")
             .description("Password for the SMTP account")
-            .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .required(false)
             .sensitive(true)
@@ -62,23 +65,14 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             .displayName("SMTP STARTTLS")
             .description("Flag indicating whether Opportunistic TLS should be enabled using STARTTLS command")
             .required(true)
-            .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
             .addValidator(StandardValidators.BOOLEAN_VALIDATOR)
             .defaultValue("false")
             .build();
-    public static final PropertyDescriptor SMTP_AUTH = new PropertyDescriptor.Builder()
-            .name("SMTP Auth")
-            .description("Flag indicating whether authentication should be used")
-            .required(true)
-            .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
-            .addValidator(StandardValidators.BOOLEAN_VALIDATOR)
-            .defaultValue("true")
-            .build();
+
     public static final PropertyDescriptor SMTP_SOCKET_FACTORY = new PropertyDescriptor.Builder()
             .name("SMTP Socket Factory")
             .description("Socket Factory to use for SMTP Connection")
             .required(true)
-            .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .defaultValue("javax.net.ssl.SSLSocketFactory")
             .build();
@@ -86,7 +80,6 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             .name("SMTP X-Mailer Header")
             .description("X-Mailer used in the header of the outgoing email")
             .required(true)
-            .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .defaultValue("NiFi")
             .build();
@@ -95,7 +88,6 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             .name("Content Type")
             .description("Mime Type used to interpret the contents of the email, such as text/plain or text/html")
             .required(true)
-            .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .defaultValue("text/plain")
             .build();
@@ -104,7 +96,6 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             .description("Specifies the Email address to use as the sender. "
                     + "Comma separated sequence of addresses following RFC822 syntax.")
             .required(true)
-            .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
     public static final PropertyDescriptor TO = new PropertyDescriptor.Builder()
@@ -148,6 +139,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         descriptors = super.getSupportedPropertyDescriptors();
         descriptors.add(SMTP_HOSTNAME);
         descriptors.add(SMTP_PORT);
+        descriptors.add(SMTP_AUTH);
         descriptors.add(SMTP_USERNAME);
         descriptors.add(SMTP_PASSWORD);
         descriptors.add(SMTP_TLS);
@@ -161,6 +153,22 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         descriptors.add(INPUT_CHARACTER_SET);
 
         return descriptors;
+    }
+
+    /**
+     * Mapping of the mail properties to the NiFi PropertyDescriptors that will be evaluated at runtime
+     */
+    private static final Map<String, PropertyDescriptor> propertyToContext = new HashMap<>();
+
+    static {
+        propertyToContext.put("mail.smtp.host", SMTP_HOSTNAME);
+        propertyToContext.put("mail.smtp.port", SMTP_PORT);
+        propertyToContext.put("mail.smtp.socketFactory.port", SMTP_PORT);
+        propertyToContext.put("mail.smtp.socketFactory.class", SMTP_SOCKET_FACTORY);
+        propertyToContext.put("mail.smtp.auth", SMTP_AUTH);
+        propertyToContext.put("mail.smtp.starttls.enable", SMTP_TLS);
+        propertyToContext.put("mail.smtp.user", SMTP_USERNAME);
+        propertyToContext.put("mail.smtp.password", SMTP_PASSWORD);
     }
 
     @Override
@@ -184,6 +192,23 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         } catch (UnsupportedEncodingException e) {
             getLogger().warn("Unable to add header {} with value {} due to encoding exception", header, value);
         }
+    }
+
+    private Properties getEmailProperties(ReportingContext context) {
+        final Properties properties = new Properties();
+
+        for (final Map.Entry<String, PropertyDescriptor> entry : propertyToContext.entrySet()) {
+            // Evaluate the property descriptor against the flow file
+            final String propertyValue = context.getProperty(entry.getValue()).getValue();
+            final String property = entry.getKey();
+
+            // Nullable values are not allowed, so filter out
+            if (null != propertyValue) {
+                properties.setProperty(property, propertyValue);
+            }
+        }
+
+        return properties;
     }
 
     /**
@@ -301,7 +326,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         String emailSubject = "Error occurred in processor " + event.get("component_name") + " "
                 + "in process group " + event.get("process_group_name");
 
-        final Properties properties = new Properties();
+        final Properties properties = this.getEmailProperties(context);
         final Session mailSession = this.createMailSession(properties, context);
         final Message message = new MimeMessage(mailSession);
 
