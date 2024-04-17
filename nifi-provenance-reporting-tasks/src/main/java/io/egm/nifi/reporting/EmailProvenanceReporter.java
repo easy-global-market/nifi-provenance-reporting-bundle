@@ -18,6 +18,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.regex.Pattern;
 
 @Tags({"email", "provenance", "smtp"})
 @CapabilityDescription("Sends an e-mail when a provenance event is considered as an error")
@@ -131,6 +132,12 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
+    public static final PropertyDescriptor SPECIFIC_RECIPIENT = new PropertyDescriptor.Builder()
+            .name("SPECIFIC RECIPIENT")
+            .description("Specific recipient to include in the To-Line of the email. ")
+            .required(false)
+            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+            .build();
     public static final PropertyDescriptor INPUT_CHARACTER_SET = new PropertyDescriptor.Builder()
             .name("input-character-set")
             .displayName("Input Character Set")
@@ -141,6 +148,14 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             .required(true)
             .addValidator(StandardValidators.CHARACTER_SET_VALIDATOR)
             .defaultValue(StandardCharsets.UTF_8.name())
+            .build();
+    public static final PropertyDescriptor NIFI_INSTANCE = new PropertyDescriptor.Builder()
+            .name("Nifi Instance")
+            .displayName("Nifi Instance")
+            .description("Specifies the nifi instance the error is coming from ")
+            .required(false)
+            .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
+            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
     @Override
@@ -158,7 +173,9 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         descriptors.add(TO);
         descriptors.add(CC);
         descriptors.add(BCC);
+        descriptors.add(SPECIFIC_RECIPIENT);
         descriptors.add(INPUT_CHARACTER_SET);
+        descriptors.add(NIFI_INSTANCE);
 
         return descriptors;
     }
@@ -212,10 +229,14 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
      * @return an InternetAddress[] parsed from the supplied property
      * @throws AddressException if the property cannot be parsed to a valid InternetAddress[]
      */
-    private InternetAddress[] toInetAddresses(final ReportingContext context, PropertyDescriptor propertyDescriptor)
+    private InternetAddress[] toInetAddresses(final ReportingContext context, final Map<String, Object> event, PropertyDescriptor propertyDescriptor)
             throws AddressException {
         InternetAddress[] parse;
-        final String value = context.getProperty(propertyDescriptor).getValue();
+
+        String value = (propertyDescriptor == SPECIFIC_RECIPIENT)
+                ? getSpecificRecipientValue(context, event)
+                : context.getProperty(propertyDescriptor).getValue();
+
         if (value == null || value.isEmpty()) {
             if (propertyDescriptor.isRequired()) {
                 final String exceptionMsg = "Required property '" + propertyDescriptor.getDisplayName() + "' evaluates to an empty string.";
@@ -244,14 +265,41 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         return Charset.forName(context.getProperty(INPUT_CHARACTER_SET).getValue());
     }
 
-    private String composeMessageContent(final Map<String, Object> event) {
+    /**
+     * Utility function to get the nifi instance from the {NIFI_INSTANCE} property
+     *
+     * @param context the ProcessContext
+     * @return the Nifi Instance
+     */
+
+    private String getNifiInstance(final ReportingContext context) {
+        return context.getProperty(NIFI_INSTANCE).getValue();
+    }
+
+    private String getSpecificRecipientValue(final ReportingContext context, final Map<String, Object> event)  {
+        final String specificRecipientAttributeName = context.getProperty(SPECIFIC_RECIPIENT).getValue();
+        final String regexPattern = "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*@[^-][A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*(\\.[A-Za-z]{2,})$";
+        String specificRecipientValue = (String) event.get(specificRecipientAttributeName);
+        try {
+            if (Pattern.compile(regexPattern).matcher(specificRecipientValue).matches()) {
+                return specificRecipientValue;
+            } else {
+                throw new IllegalArgumentException("Invalid email address: " + specificRecipientValue);
+            }
+        } catch (IllegalArgumentException e) {
+            return e.getMessage();
+        }
+    }
+
+    private String composeMessageContent(final Map<String, Object> event, final ReportingContext context) {
         final StringBuilder message = new StringBuilder();
 
         message.append("Affected processor:\n")
             .append("\tProcessor name: ").append(event.get("component_name")).append("\n")
             .append("\tProcessor type: ").append(event.get("component_type")).append("\n")
             .append("\tProcess group: ").append(event.get("process_group_name")).append("\n")
-            .append("\tURL: ").append(event.get("component_url")).append("\n");
+                .append("\tNifi instance: ").append(getNifiInstance(context)).append("\n")
+                .append("\tURL: ").append(event.get("component_url")).append("\n");
 
         message.append("\n");
         message.append("Error information:\n")
@@ -299,21 +347,22 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
     public void sendErrorEmail(Map<String, Object> event, ReportingContext context) throws MessagingException {
 
         String emailSubject = "Error occurred in processor " + event.get("component_name") + " "
-                + "in process group " + event.get("process_group_name");
+                + "in process group " + event.get("process_group_name") +   "from nifi instance: " + getNifiInstance(context) ;
 
         final Properties properties = new Properties();
         final Session mailSession = this.createMailSession(properties, context);
         final Message message = new MimeMessage(mailSession);
 
         try {
-            message.addFrom(toInetAddresses(context, FROM));
-            message.setRecipients(Message.RecipientType.TO, toInetAddresses(context, TO));
-            message.setRecipients(MimeMessage.RecipientType.CC, toInetAddresses(context, CC));
-            message.setRecipients(Message.RecipientType.BCC, toInetAddresses(context, BCC));
+            message.addFrom(toInetAddresses(context, event, FROM));
+            message.setRecipients(Message.RecipientType.TO, toInetAddresses(context, event, TO));
+            message.setRecipients(MimeMessage.RecipientType.CC, toInetAddresses(context, event, CC));
+            message.setRecipients(Message.RecipientType.BCC, toInetAddresses(context, event, BCC));
+            message.setRecipients(Message.RecipientType.TO, toInetAddresses(context, event, SPECIFIC_RECIPIENT));
             this.setMessageHeader("X-Mailer", context.getProperty(HEADER_XMAILER).getValue(), message);
             message.setSubject(emailSubject);
 
-            final String messageText = composeMessageContent(event);
+            final String messageText = composeMessageContent(event, context);
 
             final String contentType = context.getProperty(CONTENT_TYPE).getValue();
             final Charset charset = getCharset(context);
