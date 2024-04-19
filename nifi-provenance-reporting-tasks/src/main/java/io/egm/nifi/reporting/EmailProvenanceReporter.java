@@ -155,7 +155,6 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             .displayName("Email Subject Prefix")
             .description("Prefix to be added in the email subject")
             .required(false)
-            .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
@@ -230,17 +229,18 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
      * @return an InternetAddress[] parsed from the supplied property
      * @throws AddressException if the property cannot be parsed to a valid InternetAddress[]
      */
-    private InternetAddress[] toInetAddresses(final ReportingContext context, final Map<String, Object> event, PropertyDescriptor propertyDescriptor)
+    private InternetAddress[] toInetAddresses(final ReportingContext context, String specificRecipientAttributeValue, PropertyDescriptor propertyDescriptor)
             throws AddressException {
-        InternetAddress[] parse;
+        InternetAddress[] parse = new InternetAddress[0];
         String value;
-        if(propertyDescriptor == SPECIFIC_RECIPIENT_ATTRIBUTE_NAME) {
-            value = getSpecificRecipientValue(context, event);
+        if(propertyDescriptor == SPECIFIC_RECIPIENT_ATTRIBUTE_NAME && specificRecipientAttributeValue != null) {
+            value = specificRecipientAttributeValue;
             try {
                 parse = InternetAddress.parse(value);
             } catch (AddressException e) {
-                final String exceptionMsg = "Unable to parse a valid address for property '" + propertyDescriptor.getDisplayName() + "'from the attribute '" + context.getProperty(propertyDescriptor).getValue() + "' with value '" + value + "'";
-                throw new AddressException(exceptionMsg);
+                getLogger().error("Unable to parse a valid address for property '"
+                        + propertyDescriptor.getDisplayName() + "'from the attribute '" + context.getProperty(propertyDescriptor).getValue()
+                        + "' with value '" + value + "'");
             }
         } else {
             value = context.getProperty(propertyDescriptor).getValue();
@@ -338,17 +338,21 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         final Session mailSession = this.createMailSession(properties, context);
         final Message message = new MimeMessage(mailSession);
         InternetAddress[] inetAddressesArray;
-        if(context.getProperty(SPECIFIC_RECIPIENT_ATTRIBUTE_NAME).getValue() != null) {
-            inetAddressesArray = (InternetAddress[]) Stream.of(toInetAddresses(context, event, TO), toInetAddresses(context, event, SPECIFIC_RECIPIENT_ATTRIBUTE_NAME)).flatMap(Stream::of).toArray();
+        String specificRecipientAttributeValue = getSpecificRecipientValue(context, event);
+
+        if(context.getProperty(SPECIFIC_RECIPIENT_ATTRIBUTE_NAME).getValue() != null && specificRecipientAttributeValue != null) {
+            inetAddressesArray = (InternetAddress[]) Stream.of(toInetAddresses(context, specificRecipientAttributeValue, TO),
+                    toInetAddresses(context, specificRecipientAttributeValue, SPECIFIC_RECIPIENT_ATTRIBUTE_NAME))
+                    .flatMap(Stream::of).toArray();
         } else {
-            inetAddressesArray = toInetAddresses(context, event, TO);
+            inetAddressesArray = toInetAddresses(context, specificRecipientAttributeValue, TO);
         }
 
         try {
-            message.addFrom(toInetAddresses(context, event, FROM));
+            message.addFrom(toInetAddresses(context, specificRecipientAttributeValue, FROM));
             message.setRecipients(Message.RecipientType.TO, inetAddressesArray);
-            message.setRecipients(MimeMessage.RecipientType.CC, toInetAddresses(context, event, CC));
-            message.setRecipients(Message.RecipientType.BCC, toInetAddresses(context, event, BCC));
+            message.setRecipients(MimeMessage.RecipientType.CC, toInetAddresses(context, specificRecipientAttributeValue, CC));
+            message.setRecipients(Message.RecipientType.BCC, toInetAddresses(context, specificRecipientAttributeValue, BCC));
             this.setMessageHeader("X-Mailer", context.getProperty(HEADER_XMAILER).getValue(), message);
             message.setSubject(emailSubject);
 
