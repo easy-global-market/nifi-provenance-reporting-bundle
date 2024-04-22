@@ -229,37 +229,39 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
      * @return an InternetAddress[] parsed from the supplied property
      * @throws AddressException if the property cannot be parsed to a valid InternetAddress[]
      */
-    private InternetAddress[] toInetAddresses(final ReportingContext context, String specificRecipientAttributeValue, PropertyDescriptor propertyDescriptor)
+    private InternetAddress[] toInetAddresses(final ReportingContext context, PropertyDescriptor propertyDescriptor)
             throws AddressException {
         InternetAddress[] parse = new InternetAddress[0];
-        String value;
-        if(propertyDescriptor == SPECIFIC_RECIPIENT_ATTRIBUTE_NAME && specificRecipientAttributeValue != null) {
-            value = specificRecipientAttributeValue;
+        final String value = context.getProperty(propertyDescriptor).getValue();
+
+        if (value == null || value.isEmpty()) {
+            if (propertyDescriptor.isRequired()) {
+                final String exceptionMsg = "Required property '" + propertyDescriptor.getDisplayName() + "' evaluates to an empty string.";
+                throw new AddressException(exceptionMsg);
+            } else {
+                parse = new InternetAddress[0];
+            }
+        } else {
             try {
                 parse = InternetAddress.parse(value);
             } catch (AddressException e) {
-                getLogger().error("Unable to parse a valid address for property '"
-                        + propertyDescriptor.getDisplayName() + "'from the attribute '"
-                        + context.getProperty(propertyDescriptor).getValue()
-                        + "' with value '" + value + "'");
+                final String exceptionMsg = "Unable to parse a valid address for property '" + propertyDescriptor.getDisplayName() + "' with value '" + value + "'";
+                throw new AddressException(exceptionMsg);
             }
-        } else {
-            value = context.getProperty(propertyDescriptor).getValue();
-            if (value == null || value.isEmpty()) {
-                if (propertyDescriptor.isRequired()) {
-                    final String exceptionMsg = "Required property '" + propertyDescriptor.getDisplayName() + "' evaluates to an empty string.";
-                    throw new AddressException(exceptionMsg);
-                } else {
-                    parse = new InternetAddress[0];
-                }
-            } else {
-                try {
-                    parse = InternetAddress.parse(value);
-                } catch (AddressException e) {
-                    final String exceptionMsg = "Unable to parse a valid address for property '" + propertyDescriptor.getDisplayName() + "' with value '" + value + "'";
-                    throw new AddressException(exceptionMsg);
-                }
-            }
+        }
+
+        return parse;
+    }
+
+    private InternetAddress[] attributeValueToInetAddress(final ReportingContext context, String specificRecipientAttributeValue, PropertyDescriptor propertyDescriptor) {
+        InternetAddress[] parse = new InternetAddress[0];
+        try {
+            parse = InternetAddress.parse(specificRecipientAttributeValue);
+        } catch (AddressException e) {
+            getLogger().error("Unable to parse a valid address for property '"
+                    + propertyDescriptor.getDisplayName() + "'from the attribute '"
+                    + context.getProperty(propertyDescriptor).getValue()
+                    + "' with value '" + specificRecipientAttributeValue + "'");
         }
         return parse;
     }
@@ -274,7 +276,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         return Charset.forName(context.getProperty(INPUT_CHARACTER_SET).getValue());
     }
 
-    private String getSpecificRecipientValue(final ReportingContext context, final Map<String, Object> event)  {
+    private String getSpecificRecipientValue(final ReportingContext context, final Map<String, Object> event) {
         final String specificRecipientAttributeName = context.getProperty(SPECIFIC_RECIPIENT_ATTRIBUTE_NAME).getValue();
         return (String) event.get(specificRecipientAttributeName);
     }
@@ -330,11 +332,18 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             getLogger().error("Error sending error email: " + e.getMessage(), e);
         }
     }
-    public void sendErrorEmail(Map<String, Object> event, ReportingContext context) throws MessagingException {
 
-        String emailSubject = "[" + context.getProperty(EMAIL_SUBJECT_PREFIX).getValue() + "] : "
-                + "Error occurred in processor " + event.get("component_name") + " "
-                + "in process group " + event.get("process_group_name") +   "from nifi instance: " ;
+    public void sendErrorEmail(Map<String, Object> event, ReportingContext context) throws MessagingException {
+        String emailSubject;
+        if (context.getProperty(EMAIL_SUBJECT_PREFIX).getValue() != null) {
+            emailSubject = "[" + context.getProperty(EMAIL_SUBJECT_PREFIX).getValue() + "] : "
+                    + "Error occurred in processor " + event.get("component_name") + " "
+                    + "in process group " + event.get("process_group_name");
+        } else {
+            emailSubject = "Error occurred in processor " + event.get("component_name") + " "
+                    + "in process group " + event.get("process_group_name");
+        }
+
 
         final Properties properties = new Properties();
         final Session mailSession = this.createMailSession(properties, context);
@@ -342,21 +351,20 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         InternetAddress[] inetAddressesArray;
         String specificRecipientAttributeValue = getSpecificRecipientValue(context, event);
 
-        if (context.getProperty(SPECIFIC_RECIPIENT_ATTRIBUTE_NAME).getValue() != null
-                && specificRecipientAttributeValue != null) {
+        if (specificRecipientAttributeValue != null) {
             inetAddressesArray = (InternetAddress[]) Stream.of(
-                    toInetAddresses(context, specificRecipientAttributeValue, TO),
-                    toInetAddresses(context, specificRecipientAttributeValue, SPECIFIC_RECIPIENT_ATTRIBUTE_NAME)
+                    toInetAddresses(context, TO),
+                    attributeValueToInetAddress(context, specificRecipientAttributeValue, SPECIFIC_RECIPIENT_ATTRIBUTE_NAME)
             ).flatMap(Stream::of).toArray();
         } else {
-            inetAddressesArray = toInetAddresses(context, specificRecipientAttributeValue, TO);
+            inetAddressesArray = toInetAddresses(context, TO);
         }
 
         try {
-            message.addFrom(toInetAddresses(context, specificRecipientAttributeValue, FROM));
+            message.addFrom(toInetAddresses(context, FROM));
             message.setRecipients(Message.RecipientType.TO, inetAddressesArray);
-            message.setRecipients(Message.RecipientType.CC, toInetAddresses(context, specificRecipientAttributeValue, CC));
-            message.setRecipients(Message.RecipientType.BCC, toInetAddresses(context, specificRecipientAttributeValue, BCC));
+            message.setRecipients(Message.RecipientType.CC, toInetAddresses(context, CC));
+            message.setRecipients(Message.RecipientType.BCC, toInetAddresses(context, BCC));
             this.setMessageHeader("X-Mailer", context.getProperty(HEADER_XMAILER).getValue(), message);
             message.setSubject(emailSubject);
 
