@@ -25,7 +25,7 @@
 
     <groupId>io.egm.nifi</groupId>
     <artifactId>nifi-provenance-reporting-bundle</artifactId>
-    <version>1.23.2-es8.12</version>
+    <version>1.23.2-3</version>
     <packaging>pom</packaging>
 
     <properties>
