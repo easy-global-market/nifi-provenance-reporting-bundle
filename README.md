@@ -74,6 +74,9 @@ Reporting task to send provenance events considered as errors by email.
 
 <img src="docs/images/email-reporting-task-configuration.png" width=600 />
 
+* `Email Subject Prefix` is a property that contains a prefix to be added in the email subject. It can be for example the NiFi instance the error is coming from (optional).
+* `Specific Recipient Attribute Name` is a property that contains a flow file attribute name whose value will be used as an extra recipient email address when sending the email alert (optional).
+
 ## Todo
 
 - Optional inclusion of FlowFile contents.
