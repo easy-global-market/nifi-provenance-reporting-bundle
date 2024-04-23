@@ -336,7 +336,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
     public void sendErrorEmail(Map<String, Object> event, ReportingContext context) throws MessagingException {
         String emailSubject;
         if (context.getProperty(EMAIL_SUBJECT_PREFIX).getValue() != null) {
-            emailSubject = "[" + context.getProperty(EMAIL_SUBJECT_PREFIX).getValue() + "] : "
+            emailSubject = "[" + context.getProperty(EMAIL_SUBJECT_PREFIX).getValue() + "] "
                     + "Error occurred in processor " + event.get("component_name") + " "
                     + "in process group " + event.get("process_group_name");
         } else {
