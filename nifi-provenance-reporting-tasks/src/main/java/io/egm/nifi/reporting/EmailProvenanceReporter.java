@@ -231,7 +231,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
      */
     private InternetAddress[] toInetAddresses(final ReportingContext context, PropertyDescriptor propertyDescriptor)
             throws AddressException {
-        InternetAddress[] parse = new InternetAddress[0];
+        InternetAddress[] parse;
         final String value = context.getProperty(propertyDescriptor).getValue();
 
         if (value == null || value.isEmpty()) {
@@ -278,7 +278,8 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
     private String getSpecificRecipientValue(final ReportingContext context, final Map<String, Object> event) {
         final String specificRecipientAttributeName = context.getProperty(SPECIFIC_RECIPIENT_ATTRIBUTE_NAME).getValue();
-        return (String) event.get(specificRecipientAttributeName);
+        Map<String, String> eventPreviousAttributes = (Map<String, String>) event.get("previous_attributes");
+        return eventPreviousAttributes.get(specificRecipientAttributeName);
     }
 
     private String composeMessageContent(final Map<String, Object> event) {
@@ -349,7 +350,10 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         final Session mailSession = this.createMailSession(properties, context);
         final Message message = new MimeMessage(mailSession);
         InternetAddress[] inetAddressesArray;
-        String specificRecipientAttributeValue = getSpecificRecipientValue(context, event);
+        String specificRecipientAttributeValue = null;
+        if (event.containsKey("previous_attributes") && context.getProperty(SPECIFIC_RECIPIENT_ATTRIBUTE_NAME).getValue() != null) {
+            specificRecipientAttributeValue = getSpecificRecipientValue(context, event);
+        }
 
         if (specificRecipientAttributeValue != null) {
             inetAddressesArray = (InternetAddress[]) Stream.of(
