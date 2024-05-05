@@ -356,10 +356,10 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         }
 
         if (specificRecipientAttributeValue != null) {
-            inetAddressesArray = (InternetAddress[]) Stream.of(
-                    toInetAddresses(context, TO),
-                    attributeValueToInetAddress(context, specificRecipientAttributeValue, SPECIFIC_RECIPIENT_ATTRIBUTE_NAME)
-            ).flatMap(Stream::of).toArray();
+            inetAddressesArray = Stream.concat(
+                    Arrays.stream(toInetAddresses(context, TO)),
+                    Arrays.stream(attributeValueToInetAddress(context, specificRecipientAttributeValue, SPECIFIC_RECIPIENT_ATTRIBUTE_NAME))
+            ).toArray(InternetAddress[]::new);
         } else {
             inetAddressesArray = toInetAddresses(context, TO);
         }
