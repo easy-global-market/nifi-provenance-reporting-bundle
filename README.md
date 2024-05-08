@@ -61,7 +61,8 @@ Reporting task to write provenance events to an Elasticsearch index.
       "view_output_content_uri": "https://localhost:443/nifi-content-viewer/?ref=https://localhost:443/nifi-api/provenance-events/123456/content/output",
       "previous_attributes": "{\"PL_Type\":\"Entite\",\"fragment.identifier\":\"8165D09E-944D-4752-A584-1E36F25E24CD\",\"fragment.index\":\"7\",\"mime.type\":\"application/json\",\"PL_ID\":\"ABC_1234\",\"uuid\":\"ADEB4D7D-D86D-4305-8E36-21F2ABCCA350\",\"Entite\":\"EGM\",\"Blocage\":\"1\",\"path\":\"./\",\"filename\":\"2BFDB3F5-AC45-4B01-82B4-C2106F02836B\",\"record.count\":\"1\",\"segment.original.filename\":\"2BFDB3F5-AC45-4B01-82B4-C2106F02836B\",\"fragment.count\":\"50\",\"Libelle\":\"Public light XYZ\"}",
       "process_group_name": "Public lighting API",
-      "event_time": 1696354054754,
+      "event_time_millis": 1696354054754,
+      "event_time_iso_utc": "2023-03-10'T'07:27:34.754'Z'",
       "status": "Info"
   }
 ```

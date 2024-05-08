@@ -29,6 +29,9 @@ import org.apache.nifi.reporting.util.provenance.ProvenanceEventConsumer;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 @Stateful(scopes = Scope.CLUSTER, description = "After querying the "
@@ -118,7 +121,11 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
 
                 source.put("@timestamp", sdf.format(new Date()));
                 source.put("event_id", e.getEventId());
-                source.put("event_time", new Date(e.getEventTime()));
+                source.put("event_time_millis", e.getEventTime());
+                Instant eventInstant = Instant.ofEpochMilli(e.getEventTime());
+                ZonedDateTime zdt = eventInstant.atZone(ZoneOffset.UTC);
+                source.put("event_time_iso_utc", sdf.format(zdt));
+
                 source.put("entry_date", new Date(e.getFlowFileEntryDate()));
                 source.put("lineage_start_date", new Date(e.getLineageStartDate()));
                 source.put("file_size", e.getFileSize());

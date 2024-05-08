@@ -35,11 +35,6 @@ import org.elasticsearch.client.RestClient;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.text.SimpleDateFormat;
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +63,6 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
 
     private final Map<String, ElasticsearchClient> esClients = new HashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
 
     private ElasticsearchClient getElasticsearchClient(String elasticsearchUrl) throws MalformedURLException {
         if (esClients.containsKey(elasticsearchUrl))
@@ -104,13 +98,9 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
             return;
         }
 
-        final Long eventTimeMillis = (Long) event.get("event_time");
-
         Map<String, Object> preparedEvent = new HashMap<>();
-        preparedEvent.put("event_time", eventTimeMillis);
-        Instant eventInstant = Instant.ofEpochMilli(eventTimeMillis);
-        ZonedDateTime zdt = eventInstant.atZone(ZoneOffset.UTC);
-        preparedEvent.put("event_time_iso", sdf.format(zdt));
+        preparedEvent.put("event_time_millis", event.get("event_time"));
+        preparedEvent.put("event_time_iso_utc", event.get("event_time_iso_utc"));
         preparedEvent.put("component_type", event.get("component_type"));
         preparedEvent.put("component_url", event.get("component_url"));
         preparedEvent.put("component_name", event.get("component_name"));

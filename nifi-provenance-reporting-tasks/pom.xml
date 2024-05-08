@@ -19,7 +19,7 @@
     <parent>
         <groupId>io.egm.nifi</groupId>
         <artifactId>nifi-provenance-reporting-bundle</artifactId>
-        <version>1.23.2</version>
+        <version>1.23.2-3</version>
     </parent>
 
     <artifactId>nifi-provenance-reporting-tasks</artifactId>
