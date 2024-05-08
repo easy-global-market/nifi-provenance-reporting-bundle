@@ -28,10 +28,10 @@ import org.apache.nifi.reporting.ReportingContext;
 import org.apache.nifi.reporting.util.provenance.ProvenanceEventConsumer;
 
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Stateful(scopes = Scope.CLUSTER, description = "After querying the "
@@ -84,7 +84,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
 
     private volatile ProvenanceEventConsumer consumer;
 
-    final SimpleDateFormat sdf = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+    final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 
     @Override
     public List<PropertyDescriptor> getSupportedPropertyDescriptors() {
@@ -119,12 +119,12 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
                 getLogger().debug("Processing provenance event: {}", e.getEventId());
                 final Map<String, Object> source = new HashMap<>();
 
-                source.put("@timestamp", sdf.format(new Date()));
+                source.put("@timestamp", dtf.format(ZonedDateTime.now()));
                 source.put("event_id", e.getEventId());
                 source.put("event_time_millis", e.getEventTime());
                 Instant eventInstant = Instant.ofEpochMilli(e.getEventTime());
                 ZonedDateTime zdt = eventInstant.atZone(ZoneOffset.UTC);
-                source.put("event_time_iso_utc", sdf.format(zdt));
+                source.put("event_time_iso_utc", zdt.format(dtf));
 
                 source.put("entry_date", new Date(e.getFlowFileEntryDate()));
                 source.put("lineage_start_date", new Date(e.getLineageStartDate()));
