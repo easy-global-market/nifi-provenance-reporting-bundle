@@ -18,6 +18,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Tags({"email", "provenance", "smtp"})
@@ -148,6 +149,17 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             .required(false)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
+    public static final PropertyDescriptor BATCH_EMAIL = new PropertyDescriptor.Builder()
+            .name("Batch Email")
+            .displayName("Batch Email")
+            .description("Specifies whether to group multiple error events into a single email or not." +
+                    " Set to true to receive an email with grouped errors. " +
+                    "Set to false to receive individual emails for each error." +
+                    " The grouping is by process group, process id and error information")
+            .required(false)
+            .defaultValue("false")
+            .allowableValues("true", "false")
+            .build();
 
     @Override
     public List<PropertyDescriptor> getSupportedPropertyDescriptors() {
@@ -168,6 +180,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         descriptors.add(SPECIFIC_RECIPIENT_ATTRIBUTE_NAME);
         descriptors.add(INPUT_CHARACTER_SET);
         descriptors.add(EMAIL_SUBJECT_PREFIX);
+        descriptors.add(BATCH_EMAIL);
 
         return descriptors;
     }
@@ -307,25 +320,30 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         return eventPreviousAttributes.get(specificRecipientAttributeName);
     }
 
-    private String composeMessageContent(final Map<String, Object> event) {
+    private String composeMessageContent(final Map<String, Object> event, String batchEmail, int groupedEventsSize) {
         final StringBuilder message = new StringBuilder();
 
         message.append("Affected processor:\n")
-            .append("\tProcessor name: ").append(event.get("component_name")).append("\n")
-            .append("\tProcessor type: ").append(event.get("component_type")).append("\n")
-            .append("\tProcess group: ").append(event.get("process_group_name")).append("\n")
-            .append("\tURL: ").append(event.get("component_url")).append("\n");
+                .append("\tProcessor name: ").append(event.get("component_name")).append("\n")
+                .append("\tProcessor type: ").append(event.get("component_type")).append("\n")
+                .append("\tProcess group: ").append(event.get("process_group_name")).append("\n");
+
+        if(batchEmail.equals("true")) {
+            message.append("\tTotal errors : ").append(groupedEventsSize).append("\n");
+        }
+
+        message.append("\tURL: ").append(event.get("component_url")).append("\n");
 
         message.append("\n");
         message.append("Error information:\n")
-            .append("\tDetails: ").append(event.get("details")).append("\n")
-            .append("\tEvent type: ").append(event.get("event_type")).append("\n");
+                .append("\tDetails: ").append(event.get("details")).append("\n")
+                .append("\tEvent type: ").append(event.get("event_type")).append("\n");
 
         if (event.containsKey("updated_attributes")) {
             Map<String, String> updatedAttributes = (Map<String, String>) event.get("updated_attributes");
             message.append("\nFlow file - Updated attributes:\n");
             updatedAttributes.keySet().stream().sorted().forEach(attributeName ->
-                message.append(String.format("\t%1$s: %2$s\n", attributeName, updatedAttributes.get(attributeName)))
+                    message.append(String.format("\t%1$s: %2$s\n", attributeName, updatedAttributes.get(attributeName)))
             );
         }
 
@@ -333,42 +351,87 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             Map<String, String> previousAttributes = (Map<String, String>) event.get("previous_attributes");
             message.append("\nFlow file - Previous attributes:\n");
             previousAttributes.keySet().stream().sorted().forEach(attributeName ->
-                message.append(String.format("\t%1$s: %2$s\n", attributeName, previousAttributes.get(attributeName)))
+                    message.append(String.format("\t%1$s: %2$s\n", attributeName, previousAttributes.get(attributeName)))
             );
         }
 
         message.append("\nFlow file - content:\n")
-            .append("\tDownload input: ").append(event.get("download_input_content_uri")).append("\n")
-            .append("\tDownload output: ").append(event.get("download_output_content_uri")).append("\n")
-            .append("\tView input: ").append(event.get("view_input_content_uri")).append("\n")
-            .append("\tView output: ").append(event.get("view_output_content_uri")).append("\n");
+                .append("\tDownload input: ").append(event.get("download_input_content_uri")).append("\n")
+                .append("\tDownload output: ").append(event.get("download_output_content_uri")).append("\n")
+                .append("\tView input: ").append(event.get("view_input_content_uri")).append("\n")
+                .append("\tView output: ").append(event.get("view_output_content_uri")).append("\n");
 
         message.append("\n");
         return message.toString();
     }
 
     @Override
-    public void indexEvent(final Map<String, Object> event, final ReportingContext context) {
-        try {
-            // Send the email message only if it is an error event
-            if (event.containsKey("status") && event.get("status").equals("Error")) {
-                sendErrorEmail(event, context);
+    public void indexEvent(final List<Map<String, Object>> events, final ReportingContext context) {
+        List<Map<String, Object>> errorEvents = filterErrorEvents(events);
+
+        if (context.getProperty(BATCH_EMAIL).getValue().equals("true")) {
+            // Group all error events to send in a single batch email
+            groupErrorEvents(errorEvents, context);
+        } else {
+            // Send individual emails for each error event
+            for (Map<String, Object> event : errorEvents) {
+                try {
+                    sendErrorEmail(event, context, 0);
+                } catch (MessagingException e) {
+                    getLogger().error("Error sending error email: " + e.getMessage(), e);
+                }
             }
-        } catch (MessagingException e) {
-            getLogger().error("Error sending error email: " + e.getMessage(), e);
         }
     }
 
-    public void sendErrorEmail(Map<String, Object> event, ReportingContext context) throws MessagingException {
-        String emailSubject;
-        if (context.getProperty(EMAIL_SUBJECT_PREFIX).getValue() != null) {
-            emailSubject = "[" + context.getProperty(EMAIL_SUBJECT_PREFIX).getValue() + "] "
-                    + "Error occurred in processor " + event.get("component_name") + " "
-                    + "in process group " + event.get("process_group_name");
-        } else {
-            emailSubject = "Error occurred in processor " + event.get("component_name") + " "
-                    + "in process group " + event.get("process_group_name");
+    private List<Map<String, Object>> filterErrorEvents(final List<Map<String, Object>> events) {
+        return events.stream()
+                .filter(event -> "Error".equals(event.get("status")))
+                .collect(Collectors.toList());
+    }
+
+    public void groupErrorEvents(final List<Map<String, Object>> events, final ReportingContext context) {
+        Map<Map<String, String>, List<Map<String, Object>>> batchGroupedEvents = events.stream()
+                .collect(Collectors.groupingBy(event -> groupingKeys(event)));
+        batchGroupedEvents.forEach((groupingKeys, groupedEvents) -> {
+            try {
+                sendErrorEmail(groupedEvents.getFirst(), context, groupedEvents.size());
+            } catch (MessagingException e) {
+                getLogger().error("Error sending error email: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    private Map<String, String> groupingKeys(Map<String, Object> event) {
+        return Map.of(
+                "process_group_id", event.get("process_group_id").toString(),
+                "component_id", event.get("component_id").toString(),
+                "details", event.get("details").toString(),
+                "event_type", event.get("event_type").toString()
+        );
+    }
+
+    public void sendErrorEmail(Map<String, Object> event, ReportingContext context, int groupedEventsSize) throws MessagingException {
+
+        String subjectPrefix = context.getProperty(EMAIL_SUBJECT_PREFIX).getValue();
+        String batchEmail = context.getProperty(BATCH_EMAIL).getValue();
+        StringBuilder emailSubjectBuilder = new StringBuilder();
+
+        if (subjectPrefix != null) {
+            emailSubjectBuilder.append("[").append(subjectPrefix).append("] ");
         }
+
+        if (batchEmail.equals("true")) {
+            emailSubjectBuilder.append(groupedEventsSize).append(" Errors occurred in processor ")
+                    .append(event.get("component_name")).append(" in process group ")
+                    .append(event.get("process_group_name"));
+
+        } else {
+            emailSubjectBuilder.append("Error occurred in processor ")
+                    .append(event.get("component_name")).append(" in process group ")
+                    .append(event.get("process_group_name"));
+        }
+        String emailSubject = emailSubjectBuilder.toString();
 
 
         final Properties properties = this.getEmailProperties(context);
@@ -397,7 +460,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             this.setMessageHeader("X-Mailer", context.getProperty(HEADER_XMAILER).getValue(), message);
             message.setSubject(emailSubject);
 
-            final String messageText = composeMessageContent(event);
+            final String messageText = composeMessageContent(event, batchEmail, groupedEventsSize);
 
             final String contentType = context.getProperty(CONTENT_TYPE).getValue();
             final Charset charset = getCharset(context);
