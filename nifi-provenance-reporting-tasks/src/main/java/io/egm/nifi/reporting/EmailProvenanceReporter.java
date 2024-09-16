@@ -422,7 +422,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         }
 
         if (batchEmail.equals("true")) {
-            emailSubjectBuilder.append(groupedEventsSize).append(" Errors occurred in processor ")
+            emailSubjectBuilder.append(groupedEventsSize).append(" errors occurred in processor ")
                     .append(event.get("component_name")).append(" in process group ")
                     .append(event.get("process_group_name"));
 
