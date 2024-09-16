@@ -329,7 +329,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
                 .append("\tProcess group: ").append(event.get("process_group_name")).append("\n");
 
         if(batchEmail.equals("true")) {
-            message.append("\tTotal errors : ").append(groupedEventsSize).append("\n");
+            message.append("\tTotal similar errors : ").append(groupedEventsSize).append("\n");
         }
 
         message.append("\tURL: ").append(event.get("component_url")).append("\n");
