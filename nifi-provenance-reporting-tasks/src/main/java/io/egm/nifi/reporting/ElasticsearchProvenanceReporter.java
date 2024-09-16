@@ -88,7 +88,7 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
         return descriptors;
     }
 
-    public void indexEvent(final List<Map<String, Object>> events, final ReportingContext context) throws IOException {
+    public void indexEvents(final List<Map<String, Object>> events, final ReportingContext context) throws IOException {
         final String elasticsearchUrl = context.getProperty(ELASTICSEARCH_URL).getValue();
         final String elasticsearchIndex = context.getProperty(ELASTICSEARCH_INDEX).evaluateAttributeExpressions().getValue();
         final ElasticsearchClient client = getElasticsearchClient(elasticsearchUrl);

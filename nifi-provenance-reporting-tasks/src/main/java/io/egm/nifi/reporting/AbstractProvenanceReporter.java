@@ -234,14 +234,14 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
             }
 
             try {
-                indexEvent(allSources, context);
+                indexEvents(allSources, context);
             } catch (IOException ex) {
                 getLogger().error("Failed to publish provenance event", ex);
             }
         }));
     }
 
-    public abstract void indexEvent(final List<Map<String, Object>> events, final ReportingContext context) throws IOException;
+    public abstract void indexEvents(final List<Map<String, Object>> events, final ReportingContext context) throws IOException;
 
     @Override
     public void onTrigger(final ReportingContext context) {

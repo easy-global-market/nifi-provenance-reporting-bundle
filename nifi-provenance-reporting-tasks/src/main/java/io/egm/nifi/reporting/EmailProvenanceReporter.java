@@ -149,16 +149,16 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             .required(false)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
-    public static final PropertyDescriptor BATCH_EMAIL = new PropertyDescriptor.Builder()
-            .name("Batch Email")
-            .displayName("Batch Email")
+    public static final PropertyDescriptor GROUP_SIMILAR_ERRORS = new PropertyDescriptor.Builder()
+            .name("Group Similar Errors")
+            .displayName("Group Similar Errors")
             .description("Specifies whether to group multiple error events into a single email or not." +
                     " Set to true to receive an email with grouped errors. " +
                     "Set to false to receive individual emails for each error." +
-                    " The grouping is by process group, process id and error information")
+                    " The grouping is by process and error information")
             .required(false)
             .defaultValue("false")
-            .allowableValues("true", "false")
+            .addValidator(StandardValidators.BOOLEAN_VALIDATOR)
             .build();
 
     @Override
@@ -180,7 +180,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         descriptors.add(SPECIFIC_RECIPIENT_ATTRIBUTE_NAME);
         descriptors.add(INPUT_CHARACTER_SET);
         descriptors.add(EMAIL_SUBJECT_PREFIX);
-        descriptors.add(BATCH_EMAIL);
+        descriptors.add(GROUP_SIMILAR_ERRORS);
 
         return descriptors;
     }
@@ -320,7 +320,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         return eventPreviousAttributes.get(specificRecipientAttributeName);
     }
 
-    private String composeMessageContent(final Map<String, Object> event, String batchEmail, int groupedEventsSize) {
+    private String composeMessageContent(final Map<String, Object> event, Boolean groupSimilarErrors, int groupedEventsSize) {
         final StringBuilder message = new StringBuilder();
 
         message.append("Affected processor:\n")
@@ -328,7 +328,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
                 .append("\tProcessor type: ").append(event.get("component_type")).append("\n")
                 .append("\tProcess group: ").append(event.get("process_group_name")).append("\n");
 
-        if(batchEmail.equals("true")) {
+        if (groupSimilarErrors) {
             message.append("\tTotal similar errors : ").append(groupedEventsSize).append("\n");
         }
 
@@ -366,12 +366,20 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
     }
 
     @Override
-    public void indexEvent(final List<Map<String, Object>> events, final ReportingContext context) {
+    public void indexEvents(final List<Map<String, Object>> events, final ReportingContext context) {
         List<Map<String, Object>> errorEvents = filterErrorEvents(events);
 
-        if (context.getProperty(BATCH_EMAIL).getValue().equals("true")) {
+        if (context.getProperty(GROUP_SIMILAR_ERRORS).asBoolean()) {
             // Group all error events to send in a single batch email
-            groupErrorEvents(errorEvents, context);
+            Map<Map<String, String>, List<Map<String, Object>>> batchGroupedEvents = events.stream()
+                    .collect(Collectors.groupingBy(event -> groupingKeys(event)));
+            batchGroupedEvents.forEach((groupingKeys, groupedEvents) -> {
+                try {
+                    sendErrorEmail(groupedEvents.get(0), context, groupedEvents.size());
+                } catch (MessagingException e) {
+                    getLogger().error("Error sending error email: " + e.getMessage(), e);
+                }
+            });
         } else {
             // Send individual emails for each error event
             for (Map<String, Object> event : errorEvents) {
@@ -390,21 +398,9 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
                 .collect(Collectors.toList());
     }
 
-    public void groupErrorEvents(final List<Map<String, Object>> events, final ReportingContext context) {
-        Map<Map<String, String>, List<Map<String, Object>>> batchGroupedEvents = events.stream()
-                .collect(Collectors.groupingBy(event -> groupingKeys(event)));
-        batchGroupedEvents.forEach((groupingKeys, groupedEvents) -> {
-            try {
-                sendErrorEmail(groupedEvents.getFirst(), context, groupedEvents.size());
-            } catch (MessagingException e) {
-                getLogger().error("Error sending error email: " + e.getMessage(), e);
-            }
-        });
-    }
 
     private Map<String, String> groupingKeys(Map<String, Object> event) {
         return Map.of(
-                "process_group_id", event.get("process_group_id").toString(),
                 "component_id", event.get("component_id").toString(),
                 "details", event.get("details").toString(),
                 "event_type", event.get("event_type").toString()
@@ -414,14 +410,14 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
     public void sendErrorEmail(Map<String, Object> event, ReportingContext context, int groupedEventsSize) throws MessagingException {
 
         String subjectPrefix = context.getProperty(EMAIL_SUBJECT_PREFIX).getValue();
-        String batchEmail = context.getProperty(BATCH_EMAIL).getValue();
+        Boolean groupSimilarErrors = context.getProperty(GROUP_SIMILAR_ERRORS).asBoolean();
         StringBuilder emailSubjectBuilder = new StringBuilder();
 
         if (subjectPrefix != null) {
             emailSubjectBuilder.append("[").append(subjectPrefix).append("] ");
         }
 
-        if (batchEmail.equals("true")) {
+        if (groupSimilarErrors) {
             emailSubjectBuilder.append(groupedEventsSize).append(" errors occurred in processor ")
                     .append(event.get("component_name")).append(" in process group ")
                     .append(event.get("process_group_name"));
@@ -460,7 +456,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             this.setMessageHeader("X-Mailer", context.getProperty(HEADER_XMAILER).getValue(), message);
             message.setSubject(emailSubject);
 
-            final String messageText = composeMessageContent(event, batchEmail, groupedEventsSize);
+            final String messageText = composeMessageContent(event, groupSimilarErrors, groupedEventsSize);
 
             final String contentType = context.getProperty(CONTENT_TYPE).getValue();
             final Charset charset = getCharset(context);
