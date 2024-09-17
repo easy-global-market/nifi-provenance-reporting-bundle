@@ -119,7 +119,7 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
                 preparedEvent.put("previous_attributes", objectMapper.writeValueAsString(event.get("previous_attributes")));
 
             } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
+                getLogger().error("Error while writing value", e);
             }
             if (event.containsKey("details"))
                 preparedEvent.put("details", event.get("details"));

@@ -155,7 +155,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             .description("Specifies whether to group multiple error events into a single email or not." +
                     " Set to true to receive an email with grouped errors. " +
                     "Set to false to receive individual emails for each error." +
-                    " The grouping is by process and error information")
+                    " The grouping is by processor and error information")
             .required(false)
             .defaultValue("false")
             .addValidator(StandardValidators.BOOLEAN_VALIDATOR)
@@ -371,15 +371,15 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
         if (context.getProperty(GROUP_SIMILAR_ERRORS).asBoolean()) {
             // Group all error events to send in a single batch email
-            Map<Map<String, String>, List<Map<String, Object>>> batchGroupedEvents = events.stream()
-                    .collect(Collectors.groupingBy(event -> groupingKeys(event)));
-            batchGroupedEvents.forEach((groupingKeys, groupedEvents) -> {
-                try {
-                    sendErrorEmail(groupedEvents.get(0), context, groupedEvents.size());
-                } catch (MessagingException e) {
-                    getLogger().error("Error sending error email: " + e.getMessage(), e);
-                }
-            });
+            events.stream()
+                    .collect(Collectors.groupingBy(event -> groupingKeys(event)))
+                    .forEach((groupingKeys, groupedEvents) -> {
+                        try {
+                            sendErrorEmail(groupedEvents.get(0), context, groupedEvents.size());
+                        } catch (MessagingException e) {
+                            getLogger().error("Error sending error email: " + e.getMessage(), e);
+                        }
+                    });
         } else {
             // Send individual emails for each error event
             for (Map<String, Object> event : errorEvents) {
