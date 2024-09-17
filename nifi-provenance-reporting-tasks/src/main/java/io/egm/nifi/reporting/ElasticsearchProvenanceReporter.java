@@ -117,9 +117,8 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
             try {
                 preparedEvent.put("updated_attributes", objectMapper.writeValueAsString(event.get("updated_attributes")));
                 preparedEvent.put("previous_attributes", objectMapper.writeValueAsString(event.get("previous_attributes")));
-
             } catch (JsonProcessingException e) {
-                getLogger().error("Error while writing value", e);
+                getLogger().error("Error while writing value of previous or updated attributes, ignoring them", e);
             }
             if (event.containsKey("details"))
                 preparedEvent.put("details", event.get("details"));
@@ -135,8 +134,6 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
             } catch (ElasticsearchException | IOException ex) {
                 getLogger().error("Error while indexing event {}", id, ex);
             }
-
         });
-
     }
 }

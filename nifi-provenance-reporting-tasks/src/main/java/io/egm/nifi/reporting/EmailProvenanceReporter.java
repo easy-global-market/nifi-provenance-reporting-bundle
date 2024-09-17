@@ -152,10 +152,10 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
     public static final PropertyDescriptor GROUP_SIMILAR_ERRORS = new PropertyDescriptor.Builder()
             .name("Group Similar Errors")
             .displayName("Group Similar Errors")
-            .description("Specifies whether to group multiple error events into a single email or not." +
-                    " Set to true to receive an email with grouped errors. " +
-                    "Set to false to receive individual emails for each error." +
-                    " The grouping is by processor and error information")
+            .description("Specifies whether to group similar error events into a single email or not. " +
+                    "Set to true to receive a single email with grouped errors. " +
+                    "Set to false to receive an email for each error. " +
+                    "The grouping is done by processor id and error information (event type and details)")
             .required(false)
             .defaultValue("false")
             .addValidator(StandardValidators.BOOLEAN_VALIDATOR)
@@ -324,9 +324,9 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         final StringBuilder message = new StringBuilder();
 
         message.append("Affected processor:\n")
-                .append("\tProcessor name: ").append(event.get("component_name")).append("\n")
-                .append("\tProcessor type: ").append(event.get("component_type")).append("\n")
-                .append("\tProcess group: ").append(event.get("process_group_name")).append("\n");
+            .append("\tProcessor name: ").append(event.get("component_name")).append("\n")
+            .append("\tProcessor type: ").append(event.get("component_type")).append("\n")
+            .append("\tProcess group: ").append(event.get("process_group_name")).append("\n");
 
         if (groupSimilarErrors) {
             message.append("\tTotal similar errors : ").append(groupedEventsSize).append("\n");
@@ -336,14 +336,14 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
         message.append("\n");
         message.append("Error information:\n")
-                .append("\tDetails: ").append(event.get("details")).append("\n")
-                .append("\tEvent type: ").append(event.get("event_type")).append("\n");
+            .append("\tDetails: ").append(event.get("details")).append("\n")
+            .append("\tEvent type: ").append(event.get("event_type")).append("\n");
 
         if (event.containsKey("updated_attributes")) {
             Map<String, String> updatedAttributes = (Map<String, String>) event.get("updated_attributes");
             message.append("\nFlow file - Updated attributes:\n");
             updatedAttributes.keySet().stream().sorted().forEach(attributeName ->
-                    message.append(String.format("\t%1$s: %2$s\n", attributeName, updatedAttributes.get(attributeName)))
+                message.append(String.format("\t%1$s: %2$s\n", attributeName, updatedAttributes.get(attributeName)))
             );
         }
 
@@ -356,10 +356,10 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         }
 
         message.append("\nFlow file - content:\n")
-                .append("\tDownload input: ").append(event.get("download_input_content_uri")).append("\n")
-                .append("\tDownload output: ").append(event.get("download_output_content_uri")).append("\n")
-                .append("\tView input: ").append(event.get("view_input_content_uri")).append("\n")
-                .append("\tView output: ").append(event.get("view_output_content_uri")).append("\n");
+            .append("\tDownload input: ").append(event.get("download_input_content_uri")).append("\n")
+            .append("\tDownload output: ").append(event.get("download_output_content_uri")).append("\n")
+            .append("\tView input: ").append(event.get("view_input_content_uri")).append("\n")
+            .append("\tView output: ").append(event.get("view_output_content_uri")).append("\n");
 
         message.append("\n");
         return message.toString();
@@ -372,14 +372,14 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         if (context.getProperty(GROUP_SIMILAR_ERRORS).asBoolean()) {
             // Group all error events to send in a single batch email
             events.stream()
-                    .collect(Collectors.groupingBy(event -> groupingKeys(event)))
-                    .forEach((groupingKeys, groupedEvents) -> {
-                        try {
-                            sendErrorEmail(groupedEvents.get(0), context, groupedEvents.size());
-                        } catch (MessagingException e) {
-                            getLogger().error("Error sending error email: " + e.getMessage(), e);
-                        }
-                    });
+                .collect(Collectors.groupingBy(this::groupingKeys))
+                .forEach((groupingKeys, groupedEvents) -> {
+                    try {
+                        sendErrorEmail(groupedEvents.get(0), context, groupedEvents.size());
+                    } catch (MessagingException e) {
+                        getLogger().error("Error sending error email: " + e.getMessage(), e);
+                    }
+                });
         } else {
             // Send individual emails for each error event
             for (Map<String, Object> event : errorEvents) {
@@ -394,16 +394,16 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
     private List<Map<String, Object>> filterErrorEvents(final List<Map<String, Object>> events) {
         return events.stream()
-                .filter(event -> "Error".equals(event.get("status")))
-                .collect(Collectors.toList());
+            .filter(event -> "Error".equals(event.get("status")))
+            .collect(Collectors.toList());
     }
 
 
     private Map<String, String> groupingKeys(Map<String, Object> event) {
         return Map.of(
-                "component_id", event.get("component_id").toString(),
-                "details", event.get("details").toString(),
-                "event_type", event.get("event_type").toString()
+            "component_id", event.get("component_id").toString(),
+            "details", event.get("details").toString(),
+            "event_type", event.get("event_type").toString()
         );
     }
 
@@ -419,16 +419,15 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
         if (groupSimilarErrors) {
             emailSubjectBuilder.append(groupedEventsSize).append(" errors occurred in processor ")
-                    .append(event.get("component_name")).append(" in process group ")
-                    .append(event.get("process_group_name"));
+                .append(event.get("component_name")).append(" in process group ")
+                .append(event.get("process_group_name"));
 
         } else {
             emailSubjectBuilder.append("Error occurred in processor ")
-                    .append(event.get("component_name")).append(" in process group ")
-                    .append(event.get("process_group_name"));
+                .append(event.get("component_name")).append(" in process group ")
+                .append(event.get("process_group_name"));
         }
         String emailSubject = emailSubjectBuilder.toString();
-
 
         final Properties properties = this.getEmailProperties(context);
         final Session mailSession = this.createMailSession(properties, context);
