@@ -371,7 +371,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
         if (context.getProperty(GROUP_SIMILAR_ERRORS).asBoolean()) {
             // Group all error events to send in a single batch email
-            events.stream()
+            errorEvents.stream()
                 .collect(Collectors.groupingBy(this::groupingKeys))
                 .forEach((groupingKeys, groupedEvents) -> {
                     try {
@@ -401,9 +401,9 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
     private Map<String, String> groupingKeys(Map<String, Object> event) {
         return Map.of(
-                "component_id", event.getOrDefault("component_id", "Unknown").toString(),
-                "details", event.getOrDefault("details", "No Details").toString(),
-                "event_type", event.getOrDefault("event_type", "Unknown Type").toString()
+                "component_id", event.get("component_id").toString(),
+                "details", event.get("details").toString(),
+                "event_type", event.get("event_type").toString()
         );
     }
 
