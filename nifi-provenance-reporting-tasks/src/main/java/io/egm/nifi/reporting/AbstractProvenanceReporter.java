@@ -112,6 +112,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
         final List<String> detailsAsError =
                 Arrays.asList(context.getProperty(DETAILS_AS_ERROR).getValue().toLowerCase().split(","));
         final String nifiUrl = context.getProperty(NIFI_URL).getValue();
+        final List<Map<String, Object>> allSources = new ArrayList<>();
 
         consumer.consumeEvents(context, ((componentMapHolder, provenanceEventRecords) -> {
             getLogger().debug("Starting to consume events");
@@ -229,16 +230,18 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
                 source.put("view_input_content_uri", viewContentUri + "/input");
                 source.put("view_output_content_uri", viewContentUri + "/output");
 
-                try {
-                    indexEvent(source, context);
-                } catch (IOException ex) {
-                    getLogger().error("Failed to publish provenance event", e);
-                }
+                allSources.add(source);
+            }
+
+            try {
+                indexEvents(allSources, context);
+            } catch (IOException ex) {
+                getLogger().error("Failed to publish provenance event", ex);
             }
         }));
     }
 
-    public abstract void indexEvent(final Map<String, Object> event, final ReportingContext context) throws IOException;
+    public abstract void indexEvents(final List<Map<String, Object>> events, final ReportingContext context) throws IOException;
 
     @Override
     public void onTrigger(final ReportingContext context) {
