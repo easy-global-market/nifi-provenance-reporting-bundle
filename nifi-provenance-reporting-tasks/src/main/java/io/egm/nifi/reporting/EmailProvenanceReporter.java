@@ -371,7 +371,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
         if (context.getProperty(GROUP_SIMILAR_ERRORS).asBoolean()) {
             // Group all error events to send in a single batch email
-            events.stream()
+            errorEvents.stream()
                 .collect(Collectors.groupingBy(this::groupingKeys))
                 .forEach((groupingKeys, groupedEvents) -> {
                     try {
