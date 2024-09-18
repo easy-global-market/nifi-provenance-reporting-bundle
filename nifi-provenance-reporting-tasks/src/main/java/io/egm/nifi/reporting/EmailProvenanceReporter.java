@@ -401,9 +401,9 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
     private Map<String, String> groupingKeys(Map<String, Object> event) {
         return Map.of(
-                "component_id", event.get("component_id").toString(),
-                "details", event.get("details").toString(),
-                "event_type", event.get("event_type").toString()
+            "component_id", event.get("component_id").toString(),
+            "details", event.get("details").toString(),
+            "event_type", event.get("event_type").toString()
         );
     }
 
