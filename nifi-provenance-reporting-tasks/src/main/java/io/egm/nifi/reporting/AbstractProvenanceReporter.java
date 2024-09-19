@@ -112,9 +112,9 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
         final List<String> detailsAsError =
                 Arrays.asList(context.getProperty(DETAILS_AS_ERROR).getValue().toLowerCase().split(","));
         final String nifiUrl = context.getProperty(NIFI_URL).getValue();
-        final List<Map<String, Object>> allSources = new ArrayList<>();
 
         consumer.consumeEvents(context, ((componentMapHolder, provenanceEventRecords) -> {
+            final List<Map<String, Object>> allSources = new ArrayList<>();
             getLogger().debug("Starting to consume events");
             for (final ProvenanceEventRecord e: provenanceEventRecords) {
                 getLogger().debug("Processing provenance event: {}", e.getEventId());
