@@ -22,6 +22,7 @@ import co.elastic.clients.elasticsearch.core.IndexRequest;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpHost;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
@@ -87,46 +88,52 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
         return descriptors;
     }
 
-    public void indexEvent(final Map<String, Object> event, final ReportingContext context) throws IOException {
+    public void indexEvents(final List<Map<String, Object>> events, final ReportingContext context) throws IOException {
         final String elasticsearchUrl = context.getProperty(ELASTICSEARCH_URL).getValue();
         final String elasticsearchIndex = context.getProperty(ELASTICSEARCH_INDEX).evaluateAttributeExpressions().getValue();
         final ElasticsearchClient client = getElasticsearchClient(elasticsearchUrl);
-        final String id = Long.toString((Long) event.get("event_id"));
+        events.forEach(event -> {
+            final String id = Long.toString((Long) event.get("event_id"));
 
-        if (!event.containsKey("process_group_name") || !event.containsKey("component_name")) {
-            getLogger().warn("Provenance event has no process group or processor, ignoring");
-            return;
-        }
+            if (!event.containsKey("process_group_name") || !event.containsKey("component_name")) {
+                getLogger().warn("Provenance event has no process group or processor, ignoring");
+                return;
+            }
 
-        Map<String, Object> preparedEvent = new HashMap<>();
-        preparedEvent.put("event_time_millis", event.get("event_time"));
-        preparedEvent.put("event_time_iso_utc", event.get("event_time_iso_utc"));
-        preparedEvent.put("component_type", event.get("component_type"));
-        preparedEvent.put("component_url", event.get("component_url"));
-        preparedEvent.put("component_name", event.get("component_name"));
-        preparedEvent.put("process_group_name", event.get("process_group_name"));
-        preparedEvent.put("process_group_id", event.get("process_group_id"));
-        preparedEvent.put("event_type", event.get("event_type"));
-        preparedEvent.put("status", event.get("status"));
-        preparedEvent.put("download_input_content_uri", event.get("download_input_content_uri"));
-        preparedEvent.put("download_output_content_uri", event.get("download_output_content_uri"));
-        preparedEvent.put("view_input_content_uri", event.get("view_input_content_uri"));
-        preparedEvent.put("view_output_content_uri", event.get("view_output_content_uri"));
-        preparedEvent.put("updated_attributes", objectMapper.writeValueAsString(event.get("updated_attributes")));
-        preparedEvent.put("previous_attributes", objectMapper.writeValueAsString(event.get("previous_attributes")));
-        if (event.containsKey("details"))
-            preparedEvent.put("details", event.get("details"));
+            Map<String, Object> preparedEvent = new HashMap<>();
+            preparedEvent.put("event_time_millis", event.get("event_time"));
+            preparedEvent.put("event_time_iso_utc", event.get("event_time_iso_utc"));
+            preparedEvent.put("component_type", event.get("component_type"));
+            preparedEvent.put("component_url", event.get("component_url"));
+            preparedEvent.put("component_name", event.get("component_name"));
+            preparedEvent.put("process_group_name", event.get("process_group_name"));
+            preparedEvent.put("process_group_id", event.get("process_group_id"));
+            preparedEvent.put("event_type", event.get("event_type"));
+            preparedEvent.put("status", event.get("status"));
+            preparedEvent.put("download_input_content_uri", event.get("download_input_content_uri"));
+            preparedEvent.put("download_output_content_uri", event.get("download_output_content_uri"));
+            preparedEvent.put("view_input_content_uri", event.get("view_input_content_uri"));
+            preparedEvent.put("view_output_content_uri", event.get("view_output_content_uri"));
+            try {
+                preparedEvent.put("updated_attributes", objectMapper.writeValueAsString(event.get("updated_attributes")));
+                preparedEvent.put("previous_attributes", objectMapper.writeValueAsString(event.get("previous_attributes")));
+            } catch (JsonProcessingException e) {
+                getLogger().error("Error while writing value of previous or updated attributes, ignoring them", e);
+            }
+            if (event.containsKey("details"))
+                preparedEvent.put("details", event.get("details"));
 
-        final IndexRequest<Map<String, Object>> indexRequest = new
-                IndexRequest.Builder<Map<String, Object>>()
-                .index(elasticsearchIndex)
-                .id(id)
-                .document(preparedEvent)
-                .build();
-        try {
-            client.index(indexRequest);
-        } catch (ElasticsearchException ex) {
-            getLogger().error("Error while indexing event {}", id, ex);
-        }
+            final IndexRequest<Map<String, Object>> indexRequest = new
+                    IndexRequest.Builder<Map<String, Object>>()
+                    .index(elasticsearchIndex)
+                    .id(id)
+                    .document(preparedEvent)
+                    .build();
+            try {
+                client.index(indexRequest);
+            } catch (ElasticsearchException | IOException ex) {
+                getLogger().error("Error while indexing event {}", id, ex);
+            }
+        });
     }
 }
