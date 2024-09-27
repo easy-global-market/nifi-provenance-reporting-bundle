@@ -328,7 +328,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             .append("\tProcessor type: ").append(event.get("component_type")).append("\n")
             .append("\tProcess group: ").append(event.get("process_group_name")).append("\n");
 
-        if (groupSimilarErrors) {
+        if (groupSimilarErrors && groupedEventsSize > 1) {
             message.append("\tTotal similar errors : ").append(groupedEventsSize).append("\n");
         }
 
@@ -417,7 +417,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
             emailSubjectBuilder.append("[").append(subjectPrefix).append("] ");
         }
 
-        if (groupSimilarErrors) {
+        if (groupSimilarErrors && groupedEventsSize > 1) {
             emailSubjectBuilder.append(groupedEventsSize).append(" errors occurred in processor ")
                 .append(event.get("component_name")).append(" in process group ")
                 .append(event.get("process_group_name"));
