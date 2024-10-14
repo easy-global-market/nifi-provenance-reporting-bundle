@@ -101,14 +101,15 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
             }
 
             Map<String, Object> preparedEvent = new HashMap<>();
+            preparedEvent.put("event_id", event.get("event_id"));
             preparedEvent.put("event_time_millis", event.get("event_time"));
             preparedEvent.put("event_time_iso_utc", event.get("event_time_iso_utc"));
+            preparedEvent.put("event_type", event.get("event_type"));
             preparedEvent.put("component_type", event.get("component_type"));
             preparedEvent.put("component_url", event.get("component_url"));
             preparedEvent.put("component_name", event.get("component_name"));
             preparedEvent.put("process_group_name", event.get("process_group_name"));
             preparedEvent.put("process_group_id", event.get("process_group_id"));
-            preparedEvent.put("event_type", event.get("event_type"));
             preparedEvent.put("status", event.get("status"));
             preparedEvent.put("download_input_content_uri", event.get("download_input_content_uri"));
             preparedEvent.put("download_output_content_uri", event.get("download_output_content_uri"));
