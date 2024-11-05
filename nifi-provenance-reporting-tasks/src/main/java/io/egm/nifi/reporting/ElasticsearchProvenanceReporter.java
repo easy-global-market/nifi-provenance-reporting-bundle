@@ -70,7 +70,8 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
-    public static final PropertyDescriptor PROCESSORS_TYPES_ALLOWLIST = new PropertyDescriptor.Builder().name("details-as-error")
+    public static final PropertyDescriptor PROCESSORS_TYPES_ALLOWLIST = new PropertyDescriptor
+            .Builder().name("Processors Types Allowlist")
             .displayName("Processors Types Allowlist")
             .description("Specifies a comma-separated list of processors types for which all provenance events "
                     + "will be sent. If the processor type is not in the list, only error events will be sent.")
