@@ -44,6 +44,13 @@ import java.util.Map;
 @Tags({"elasticsearch", "provenance"})
 @CapabilityDescription("A provenance reporting task that writes to Elasticsearch")
 public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter {
+
+    static final List<String> DEFAULT_PROCESSORS_TYPES_ALLOWLIST = Arrays.asList(
+             "DeleteSFTP", "ExecuteSQLRecord", "ExtendedValidateCsv", "FetchFTP",
+            "FetchSFTP", "FetchSmb", "GenerateFlowFile", "GetFTP", "GetSFTP", "GetSmbFile", "InvokeHTTP", "ListenFTP",
+            "ListFTP", "ListSFTP", "ListSmb", "PutFTP", "PutSFTP", "PutSmbFile"
+    );
+
     public static final PropertyDescriptor ELASTICSEARCH_URL = new PropertyDescriptor
             .Builder().name("Elasticsearch URL")
             .displayName("Elasticsearch URL")
@@ -63,11 +70,13 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
-    static final PropertyDescriptor PROCESSORS_TYPE_ALLOWLIST = new PropertyDescriptor.Builder().name("details-as-error")
-            .displayName("Processors Type Allowlist")
+    public static final PropertyDescriptor PROCESSORS_TYPES_ALLOWLIST = new PropertyDescriptor.Builder().name("details-as-error")
+            .displayName("Processors Types Allowlist")
             .description("Specifies a comma-separated list of processors types for which all provenance events "
                     + "will be sent. If the processor type is not in the list, only error events will be sent.")
-            .defaultValue("").build();
+            .defaultValue(String.join(",", DEFAULT_PROCESSORS_TYPES_ALLOWLIST))
+            .addValidator(StandardValidators.createListValidator(true, true, StandardValidators.NON_BLANK_VALIDATOR))
+            .build();
 
     private final Map<String, ElasticsearchClient> esClients = new HashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -92,7 +101,7 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
         descriptors = super.getSupportedPropertyDescriptors();
         descriptors.add(ELASTICSEARCH_URL);
         descriptors.add(ELASTICSEARCH_INDEX);
-        descriptors.add(PROCESSORS_TYPE_ALLOWLIST);
+        descriptors.add(PROCESSORS_TYPES_ALLOWLIST);
         return descriptors;
     }
 
@@ -100,8 +109,8 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
         final String elasticsearchUrl = context.getProperty(ELASTICSEARCH_URL).getValue();
         final String elasticsearchIndex = context.getProperty(ELASTICSEARCH_INDEX).evaluateAttributeExpressions().getValue();
         final ElasticsearchClient client = getElasticsearchClient(elasticsearchUrl);
-        final List<String> processorTypes =
-                Arrays.asList(context.getProperty(PROCESSORS_TYPE_ALLOWLIST).getValue().split(","));
+        final List<String> processorTypesAllowlist =
+                Arrays.asList(context.getProperty(PROCESSORS_TYPES_ALLOWLIST).getValue().split(","));
 
         events.forEach(event -> {
             final String id = Long.toString((Long) event.get("event_id"));
@@ -114,15 +123,11 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
                 getLogger().warn("Provenance event has no component type, ignoring");
                 return;
             }
-            if(!event.containsKey("status")) {
-                getLogger().warn("Provenance event has no status, ignoring");
-                return;
-            }
 
             final String componentType = event.get("component_type").toString();
             final String status = event.get("status").toString();
 
-            if(processorTypes.contains(componentType)|| status.equals("Error")) {
+            if(processorTypesAllowlist.contains(componentType)|| status.equals("Error")) {
 
                 Map<String, Object> preparedEvent = new HashMap<>();
                 preparedEvent.put("event_id", event.get("event_id"));
