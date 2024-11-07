@@ -83,7 +83,6 @@ When set to `true` a single email with grouped errors will be sent. When set to 
 ## Todo
 
 - Optional inclusion of FlowFile contents.
-- Add batching support in email provenance reporter.
 - Add testing.
 
 ## License
