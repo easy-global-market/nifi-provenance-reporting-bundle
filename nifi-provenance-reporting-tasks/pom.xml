@@ -19,13 +19,13 @@
     <parent>
         <groupId>io.egm.nifi</groupId>
         <artifactId>nifi-provenance-reporting-bundle</artifactId>
-        <version>1.27.0</version>
+        <version>2.1.0</version>
     </parent>
 
     <artifactId>nifi-provenance-reporting-tasks</artifactId>
     <packaging>jar</packaging>
     <properties>
-        <nifi.version>1.27.0</nifi.version>
+        <nifi.version>2.0.0</nifi.version>
     </properties>
 
     <dependencies>
@@ -47,7 +47,7 @@
         <dependency>
             <groupId>co.elastic.clients</groupId>
             <artifactId>elasticsearch-java</artifactId>
-            <version>8.12.2</version>
+            <version>8.17.0</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
