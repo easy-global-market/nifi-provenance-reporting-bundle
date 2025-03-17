@@ -25,7 +25,7 @@
     <artifactId>nifi-provenance-reporting-tasks</artifactId>
     <packaging>jar</packaging>
     <properties>
-        <nifi.version>2.2.0</nifi.version>
+        <nifi.version>2.3.0</nifi.version>
     </properties>
 
     <dependencies>
