@@ -316,8 +316,10 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
     private String getSpecificRecipientValue(final ReportingContext context, final Map<String, Object> event) {
         final String specificRecipientAttributeName = context.getProperty(SPECIFIC_RECIPIENT_ATTRIBUTE_NAME).getValue();
-        Map<String, String> eventPreviousAttributes = (Map<String, String>) event.get("previous_attributes");
-        return eventPreviousAttributes.get(specificRecipientAttributeName);
+        Map<String, String> allAttributes =
+            (Map<String, String>) event.getOrDefault("previous_attributes", new HashMap<>());
+        allAttributes.putAll((Map<String, String>) event.getOrDefault("updated_attributes", new HashMap<>()));
+        return allAttributes.get(specificRecipientAttributeName);
     }
 
     private String composeMessageContent(final Map<String, Object> event, Boolean groupSimilarErrors, int groupedEventsSize) {
@@ -434,7 +436,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         final Message message = new MimeMessage(mailSession);
         InternetAddress[] inetAddressesArray;
         String specificRecipientAttributeValue = null;
-        if (event.containsKey("previous_attributes") && context.getProperty(SPECIFIC_RECIPIENT_ATTRIBUTE_NAME).getValue() != null) {
+        if (context.getProperty(SPECIFIC_RECIPIENT_ATTRIBUTE_NAME).getValue() != null) {
             specificRecipientAttributeValue = getSpecificRecipientValue(context, event);
         }
 
