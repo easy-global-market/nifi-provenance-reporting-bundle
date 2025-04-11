@@ -316,10 +316,15 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
     private String getSpecificRecipientValue(final ReportingContext context, final Map<String, Object> event) {
         final String specificRecipientAttributeName = context.getProperty(SPECIFIC_RECIPIENT_ATTRIBUTE_NAME).getValue();
-        Map<String, String> allAttributes =
+        Map<String, String> previousAttributes =
             (Map<String, String>) event.getOrDefault("previous_attributes", new HashMap<>());
-        allAttributes.putAll((Map<String, String>) event.getOrDefault("updated_attributes", new HashMap<>()));
-        return allAttributes.get(specificRecipientAttributeName);
+        if (previousAttributes.get(specificRecipientAttributeName) != null) {
+            return previousAttributes.get(specificRecipientAttributeName);
+        } else {
+            Map<String, String> updatedAttributes =
+                (Map<String, String>) event.getOrDefault("updated_attributes", new HashMap<>());
+            return updatedAttributes.get(specificRecipientAttributeName);
+        }
     }
 
     private String composeMessageContent(final Map<String, Object> event, Boolean groupSimilarErrors, int groupedEventsSize) {
