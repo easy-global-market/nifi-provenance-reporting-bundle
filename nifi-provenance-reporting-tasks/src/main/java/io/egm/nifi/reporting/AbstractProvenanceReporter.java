@@ -80,6 +80,18 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
             .defaultValue("https://localhost:443")
             .addValidator(StandardValidators.URL_VALIDATOR).build();
 
+    static final PropertyDescriptor CHECK_FOR_HTTP_ERRORS = new PropertyDescriptor.Builder().name("check-for-http-errors")
+            .displayName("Check for HTTP errors")
+            .description("Specifies if HTTP status codes should be checked for errors. It is used to be able to "
+                    + "detect flowfiles that had an error in an InvokeHTTP but were not terminated")
+            .defaultValue("true").build();
+
+    static final PropertyDescriptor CHECK_FOR_SCRIPTS_ERRORS = new PropertyDescriptor.Builder().name("check-for-scripts-errors")
+            .displayName("Check for scripts errors")
+            .description("Specifies if script execution status should be checked for errors. It is used to be able "
+                    + "to detect flowfiles that had an error in an ExecuteStreamCommand but were not terminated")
+            .defaultValue("true").build();
+
     protected List<PropertyDescriptor> descriptors;
 
     private volatile ProvenanceEventConsumer consumer;
@@ -93,6 +105,8 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
         descriptors.add(BATCH_SIZE);
         descriptors.add(DETAILS_AS_ERROR);
         descriptors.add(NIFI_URL);
+        descriptors.add(CHECK_FOR_HTTP_ERRORS);
+        descriptors.add(CHECK_FOR_SCRIPTS_ERRORS);
         return descriptors;
     }
 
@@ -106,12 +120,57 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
         consumer.setScheduled(true);
     }
 
+    private void checkForHttpErrors(final ProvenanceEventRecord e, final Map<String, Object> source) {
+        String[] httpErrorCodes = {
+                "400", // Bad Request
+                "401", // Unauthorized
+                "402", // Payment Required
+                "403", // Forbidden
+                "404", // Not Found
+                "405", // Method Not Allowed
+                "406", // Not Acceptable
+                "407", // Proxy Authentication Required
+                "408", // Request Timeout
+                "409", // Conflict
+                "410", // Gone
+                "411", // Length Required
+                "412", // Precondition Failed
+                "413", // Payload Too Large
+                "414", // URI Too Long
+                "415", // Unsupported Media Type
+                "416", // Range Not Satisfiable
+                "417", // Expectation Failed
+                "426", // Upgrade Required
+                "500", // Internal Server Error
+                "501", // Not Implemented
+                "502", // Bad Gateway
+                "503", // Service Unavailable
+                "504", // Gateway Timeout
+                "505"  // HTTP Version Not Supported
+        };
+        String statusCode = e.getAttribute("invokehttp.status.code");
+        if (Arrays.asList(httpErrorCodes).contains(statusCode))
+            source.put("status", "Error");
+        else
+            source.put("status", "Info");
+    }
+
+    private void checkForScriptsErrors(final ProvenanceEventRecord e, final Map<String, Object> source) {
+        String executionError = e.getAttribute("execution.error");
+        if (Objects.equals(executionError, ""))
+            source.put("status", "Info");
+        else
+            source.put("status", "Error");
+    }
+
     private void processProvenanceEvents(ReportingContext context) {
         createConsumer(context);
 
         final List<String> detailsAsError =
                 Arrays.asList(context.getProperty(DETAILS_AS_ERROR).getValue().toLowerCase().split(","));
         final String nifiUrl = context.getProperty(NIFI_URL).getValue();
+        final boolean httpCheck = Boolean.parseBoolean(context.getProperty(CHECK_FOR_HTTP_ERRORS).getValue());
+        final boolean scriptsCheck = Boolean.parseBoolean(context.getProperty(CHECK_FOR_SCRIPTS_ERRORS).getValue());
 
         consumer.consumeEvents(context, ((componentMapHolder, provenanceEventRecords) -> {
             final List<Map<String, Object>> allSources = new ArrayList<>();
@@ -196,6 +255,10 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
 
                 if (details != null && detailsAsError.contains(details.toLowerCase()))
                     source.put("status", "Error");
+                else if (httpCheck && Objects.equals(componentType, "InvokeHTTP"))
+                    checkForHttpErrors(e, source);
+                else if (scriptsCheck && Objects.equals(componentType, "ExecuteStreamCommand"))
+                    checkForScriptsErrors(e, source);
                 else
                     source.put("status", "Info");
 
