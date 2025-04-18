@@ -80,6 +80,20 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
             .defaultValue("https://localhost:443")
             .addValidator(StandardValidators.URL_VALIDATOR).build();
 
+    static final PropertyDescriptor CHECK_FOR_HTTP_ERRORS = new PropertyDescriptor.Builder().name("check-for-http-errors")
+            .displayName("Check for HTTP errors")
+            .description("Specifies if HTTP status codes should be checked for errors. It is used to be able to "
+                    + "detect flowfiles that had an error in an InvokeHTTP but were not terminated")
+            .defaultValue("true")
+            .allowableValues("true", "false").build();
+
+    static final PropertyDescriptor CHECK_FOR_SCRIPTS_ERRORS = new PropertyDescriptor.Builder().name("check-for-scripts-errors")
+            .displayName("Check for scripts errors")
+            .description("Specifies if script execution status should be checked for errors. It is used to be able "
+                    + "to detect flowfiles that had an error in an ExecuteStreamCommand but were not terminated")
+            .defaultValue("true")
+            .allowableValues("true", "false").build();
+
     protected List<PropertyDescriptor> descriptors;
 
     private volatile ProvenanceEventConsumer consumer;
@@ -93,6 +107,8 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
         descriptors.add(BATCH_SIZE);
         descriptors.add(DETAILS_AS_ERROR);
         descriptors.add(NIFI_URL);
+        descriptors.add(CHECK_FOR_HTTP_ERRORS);
+        descriptors.add(CHECK_FOR_SCRIPTS_ERRORS);
         return descriptors;
     }
 
@@ -106,12 +122,30 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
         consumer.setScheduled(true);
     }
 
+    private void checkForHttpErrors(final ProvenanceEventRecord e, final Map<String, Object> source) {
+        String statusCode = e.getAttribute("invokehttp.status.code");
+        if (statusCode.charAt(0) == '4' || statusCode.charAt(0) == '5')
+            source.put("status", "Error");
+        else
+            source.put("status", "Info");
+    }
+
+    private void checkForScriptsErrors(final ProvenanceEventRecord e, final Map<String, Object> source) {
+        String executionError = e.getAttribute("execution.error");
+        if (Objects.equals(executionError, ""))
+            source.put("status", "Info");
+        else
+            source.put("status", "Error");
+    }
+
     private void processProvenanceEvents(ReportingContext context) {
         createConsumer(context);
 
         final List<String> detailsAsError =
                 Arrays.asList(context.getProperty(DETAILS_AS_ERROR).getValue().toLowerCase().split(","));
         final String nifiUrl = context.getProperty(NIFI_URL).getValue();
+        final boolean httpCheck = Boolean.parseBoolean(context.getProperty(CHECK_FOR_HTTP_ERRORS).getValue());
+        final boolean scriptsCheck = Boolean.parseBoolean(context.getProperty(CHECK_FOR_SCRIPTS_ERRORS).getValue());
 
         consumer.consumeEvents(context, ((componentMapHolder, provenanceEventRecords) -> {
             final List<Map<String, Object>> allSources = new ArrayList<>();
@@ -196,6 +230,10 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
 
                 if (details != null && detailsAsError.contains(details.toLowerCase()))
                     source.put("status", "Error");
+                else if (httpCheck && Objects.equals(componentType, "InvokeHTTP"))
+                    checkForHttpErrors(e, source);
+                else if (scriptsCheck && Objects.equals(componentType, "ExecuteStreamCommand"))
+                    checkForScriptsErrors(e, source);
                 else
                     source.put("status", "Info");
 
