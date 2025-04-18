@@ -84,13 +84,15 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
             .displayName("Check for HTTP errors")
             .description("Specifies if HTTP status codes should be checked for errors. It is used to be able to "
                     + "detect flowfiles that had an error in an InvokeHTTP but were not terminated")
-            .defaultValue("true").build();
+            .defaultValue("true")
+            .allowableValues("true", "false").build();
 
     static final PropertyDescriptor CHECK_FOR_SCRIPTS_ERRORS = new PropertyDescriptor.Builder().name("check-for-scripts-errors")
             .displayName("Check for scripts errors")
             .description("Specifies if script execution status should be checked for errors. It is used to be able "
                     + "to detect flowfiles that had an error in an ExecuteStreamCommand but were not terminated")
-            .defaultValue("true").build();
+            .defaultValue("true")
+            .allowableValues("true", "false").build();
 
     protected List<PropertyDescriptor> descriptors;
 
@@ -121,35 +123,8 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
     }
 
     private void checkForHttpErrors(final ProvenanceEventRecord e, final Map<String, Object> source) {
-        String[] httpErrorCodes = {
-                "400", // Bad Request
-                "401", // Unauthorized
-                "402", // Payment Required
-                "403", // Forbidden
-                "404", // Not Found
-                "405", // Method Not Allowed
-                "406", // Not Acceptable
-                "407", // Proxy Authentication Required
-                "408", // Request Timeout
-                "409", // Conflict
-                "410", // Gone
-                "411", // Length Required
-                "412", // Precondition Failed
-                "413", // Payload Too Large
-                "414", // URI Too Long
-                "415", // Unsupported Media Type
-                "416", // Range Not Satisfiable
-                "417", // Expectation Failed
-                "426", // Upgrade Required
-                "500", // Internal Server Error
-                "501", // Not Implemented
-                "502", // Bad Gateway
-                "503", // Service Unavailable
-                "504", // Gateway Timeout
-                "505"  // HTTP Version Not Supported
-        };
         String statusCode = e.getAttribute("invokehttp.status.code");
-        if (Arrays.asList(httpErrorCodes).contains(statusCode))
+        if (statusCode.charAt(0) == '4' || statusCode.charAt(0) == '5')
             source.put("status", "Error");
         else
             source.put("status", "Info");
