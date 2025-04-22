@@ -230,12 +230,9 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
 
                 if (details != null && detailsAsError.contains(details.toLowerCase()))
                     source.put("status", "Error");
-                else if (httpCheck
-                        && Objects.equals(componentType, "InvokeHTTP")
-                        && ProvenanceEventType.ATTRIBUTES_MODIFIED.equals(eventType))
+                else if (httpCheck && Objects.equals(componentType, "InvokeHTTP") && "ATTRIBUTE_MODIFIED".equals(eventType != null ? eventType.toString() : null))
                     checkForHttpErrors(e, source);
-                else if (scriptsCheck
-                        && Objects.equals(componentType, "ExecuteStreamCommand"))
+                else if (scriptsCheck && Objects.equals(componentType, "ExecuteStreamCommand"))
                     checkForScriptsErrors(e, source);
                 else
                     source.put("status", "Info");
