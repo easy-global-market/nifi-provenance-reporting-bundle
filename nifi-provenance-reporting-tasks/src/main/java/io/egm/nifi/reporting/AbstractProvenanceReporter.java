@@ -123,7 +123,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
     }
 
     private void checkForHttpErrors(final ProvenanceEventRecord e, final Map<String, Object> source) {
-        String statusCode = e.getAttribute("invokehttp.status.code");
+        String statusCode = e.getUpdatedAttributes().get("invokehttp.status.code");
         if (statusCode.charAt(0) == '4' || statusCode.charAt(0) == '5')
             source.put("status", "Error");
         else
