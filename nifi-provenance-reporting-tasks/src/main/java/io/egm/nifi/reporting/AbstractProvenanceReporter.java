@@ -123,19 +123,25 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
     }
 
     private void checkForHttpErrors(final ProvenanceEventRecord e, final Map<String, Object> source) {
-        String statusCode = e.getUpdatedAttributes().get("invokehttp.status.code");
-        if (statusCode.charAt(0) == '4' || statusCode.charAt(0) == '5')
+        String statusCode = e.getAttribute("invokehttp.status.code");
+        if (statusCode == null) {
+            getLogger().warn(
+                "No status code found in event from InvokeHTTP processor {} in process group {}",
+                source.get("component_name"),
+                source.get("process_group_name")
+            );
+        } else if (statusCode.charAt(0) == '4' || statusCode.charAt(0) == '5') {
             source.put("status", "Error");
-        else
-            source.put("status", "Info");
+            source.put("details", "HTTP status code received identified as an error: " + statusCode);
+        }
     }
 
     private void checkForScriptsErrors(final ProvenanceEventRecord e, final Map<String, Object> source) {
         String executionError = e.getAttribute("execution.error");
-        if (Objects.equals(executionError, ""))
-            source.put("status", "Info");
-        else
+        if (!Objects.equals(executionError, "")) {
             source.put("status", "Error");
+            source.put("details", "String returned an error: " + executionError);
+        }
     }
 
     private void processProvenanceEvents(ReportingContext context) {
@@ -237,8 +243,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
                 else if (scriptsCheck
                         && Objects.equals(componentType, "ExecuteStreamCommand"))
                     checkForScriptsErrors(e, source);
-                else
-                    source.put("status", "Info");
+                source.putIfAbsent("status", "Info");
 
                 final String relationship = e.getRelationship();
                 if (relationship != null) {
