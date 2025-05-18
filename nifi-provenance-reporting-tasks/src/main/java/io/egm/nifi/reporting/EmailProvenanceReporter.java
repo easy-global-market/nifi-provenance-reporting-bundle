@@ -163,7 +163,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
     @Override
     public List<PropertyDescriptor> getSupportedPropertyDescriptors() {
-        descriptors = super.getSupportedPropertyDescriptors();
+        final List<PropertyDescriptor> descriptors = super.getCommonPropertyDescriptors();
         descriptors.add(SMTP_HOSTNAME);
         descriptors.add(SMTP_PORT);
         descriptors.add(SMTP_AUTH);

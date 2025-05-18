@@ -99,7 +99,7 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
 
     @Override
     public final List<PropertyDescriptor> getSupportedPropertyDescriptors() {
-        descriptors = super.getSupportedPropertyDescriptors();
+        final List<PropertyDescriptor> descriptors = super.getCommonPropertyDescriptors();
         descriptors.add(ELASTICSEARCH_URL);
         descriptors.add(ELASTICSEARCH_INDEX);
         descriptors.add(PROCESSORS_TYPES_ALLOWLIST);

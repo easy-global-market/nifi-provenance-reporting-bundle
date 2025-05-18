@@ -94,15 +94,12 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
             .defaultValue("true")
             .allowableValues("true", "false").build();
 
-    protected List<PropertyDescriptor> descriptors;
-
     private volatile ProvenanceEventConsumer consumer;
 
     final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 
-    @Override
-    public List<PropertyDescriptor> getSupportedPropertyDescriptors() {
-        final List<PropertyDescriptor> descriptors = new ArrayList<>();
+    public List<PropertyDescriptor> getCommonPropertyDescriptors() {
+        List<PropertyDescriptor> descriptors = new ArrayList<>();
         descriptors.add(START_POSITION);
         descriptors.add(BATCH_SIZE);
         descriptors.add(DETAILS_AS_ERROR);
