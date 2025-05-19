@@ -130,7 +130,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
         consumer.setScheduled(true);
     }
 
-    private void checkForHttpErrors(final ProvenanceEventRecord e, final Map<String, Object> source, List<String> ignored_http_codes) {
+    private void checkForHttpErrors(final ProvenanceEventRecord e, final Map<String, Object> source, List<String> ignoredHttpCodes) {
         String statusCode = e.getAttribute("invokehttp.status.code");
         if (statusCode == null) {
             getLogger().warn(
@@ -138,7 +138,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
                 source.get("component_name"),
                 source.get("process_group_name")
             );
-        } else if ((statusCode.charAt(0) == '4' || statusCode.charAt(0) == '5') && !(ignored_http_codes.contains(statusCode))) {
+        } else if ((statusCode.charAt(0) == '4' || statusCode.charAt(0) == '5') && !(ignoredHttpCodes.contains(statusCode))) {
             source.put("status", "Error");
             source.put("details", "HTTP status code received identified as an error: " + statusCode);
         }
