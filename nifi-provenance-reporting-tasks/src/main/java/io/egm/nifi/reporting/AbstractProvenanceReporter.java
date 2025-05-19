@@ -87,6 +87,13 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
             .defaultValue("true")
             .allowableValues("true", "false").build();
 
+    static final PropertyDescriptor IGNORED_HTTP_ERROR_CODES = new PropertyDescriptor.Builder().name("ignored-http-error-codes")
+            .displayName("Ignored HTTP error codes")
+            .description("List of error codes that should not be counted as error by the HTTP error detection,"
+                    + "should be a coma separated list of error codes to ignore")
+            .defaultValue("").build();
+
+
     static final PropertyDescriptor CHECK_FOR_SCRIPTS_ERRORS = new PropertyDescriptor.Builder().name("check-for-scripts-errors")
             .displayName("Check for scripts errors")
             .description("Specifies if script execution status should be checked for errors. It is used to be able "
@@ -108,6 +115,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
         descriptors.add(DETAILS_AS_ERROR);
         descriptors.add(NIFI_URL);
         descriptors.add(CHECK_FOR_HTTP_ERRORS);
+        descriptors.add(IGNORED_HTTP_ERROR_CODES);
         descriptors.add(CHECK_FOR_SCRIPTS_ERRORS);
         return descriptors;
     }
@@ -122,7 +130,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
         consumer.setScheduled(true);
     }
 
-    private void checkForHttpErrors(final ProvenanceEventRecord e, final Map<String, Object> source) {
+    private void checkForHttpErrors(final ProvenanceEventRecord e, final Map<String, Object> source, List<String> ignored_http_codes) {
         String statusCode = e.getAttribute("invokehttp.status.code");
         if (statusCode == null) {
             getLogger().warn(
@@ -130,7 +138,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
                 source.get("component_name"),
                 source.get("process_group_name")
             );
-        } else if (statusCode.charAt(0) == '4' || statusCode.charAt(0) == '5') {
+        } else if ((statusCode.charAt(0) == '4' || statusCode.charAt(0) == '5') && !(ignored_http_codes.contains(statusCode))) {
             source.put("status", "Error");
             source.put("details", "HTTP status code received identified as an error: " + statusCode);
         }
@@ -151,6 +159,8 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
                 Arrays.asList(context.getProperty(DETAILS_AS_ERROR).getValue().toLowerCase().split(","));
         final String nifiUrl = context.getProperty(NIFI_URL).getValue();
         final boolean httpCheck = Boolean.parseBoolean(context.getProperty(CHECK_FOR_HTTP_ERRORS).getValue());
+        final List<String> ignoredHttpCodes =
+                Arrays.asList(context.getProperty(IGNORED_HTTP_ERROR_CODES).getValue().split(","));
         final boolean scriptsCheck = Boolean.parseBoolean(context.getProperty(CHECK_FOR_SCRIPTS_ERRORS).getValue());
 
         consumer.consumeEvents(context, ((componentMapHolder, provenanceEventRecords) -> {
@@ -239,7 +249,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
                 else if (httpCheck
                         && Objects.equals(componentType, "InvokeHTTP")
                         && ProvenanceEventType.ATTRIBUTES_MODIFIED.equals(eventType))
-                    checkForHttpErrors(e, source);
+                    checkForHttpErrors(e, source, ignoredHttpCodes);
                 else if (scriptsCheck
                         && Objects.equals(componentType, "ExecuteStreamCommand"))
                     checkForScriptsErrors(e, source);
