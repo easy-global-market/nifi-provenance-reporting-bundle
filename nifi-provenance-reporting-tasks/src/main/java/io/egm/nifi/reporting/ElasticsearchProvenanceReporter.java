@@ -27,7 +27,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpHost;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
+import org.apache.nifi.annotation.lifecycle.OnScheduled;
+import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.controller.ConfigurationContext;
 import org.apache.nifi.expression.ExpressionLanguageScope;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.reporting.ReportingContext;
@@ -79,22 +82,31 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
             .addValidator(StandardValidators.createListValidator(true, true, StandardValidators.NON_BLANK_VALIDATOR))
             .build();
 
-    private final Map<String, ElasticsearchClient> esClients = new HashMap<>();
+    private ElasticsearchClient esClient;
+    private ElasticsearchTransport esTransport;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private ElasticsearchClient getElasticsearchClient(String elasticsearchUrl) throws MalformedURLException {
-        if (esClients.containsKey(elasticsearchUrl))
-            return esClients.get(elasticsearchUrl);
+    @OnScheduled
+    public void createEsClient(final ConfigurationContext context) throws MalformedURLException {
+        final String elasticsearchUrl = context.getProperty(ELASTICSEARCH_URL).getValue();
 
         URL url = new URL(elasticsearchUrl);
         RestClient restClient = RestClient.builder(new HttpHost(url.getHost(), url.getPort())).build();
 
         // Create the transport with a Jackson mapper
-        ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
+        esTransport = new RestClientTransport(restClient, new JacksonJsonpMapper());
+        esClient = new ElasticsearchClient(esTransport);
+    }
 
-        ElasticsearchClient client = new ElasticsearchClient(transport);
-        esClients.put(elasticsearchUrl, client);
-        return client;
+    @OnStopped
+    public void shutdown() {
+        if (esTransport != null) {
+            try {
+                esTransport.close();
+            } catch (IOException e) {
+                getLogger().error("Error while closing Elasticsearch transport", e);
+            }
+        }
     }
 
     @Override
@@ -106,10 +118,9 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
         return descriptors;
     }
 
-    public void indexEvents(final List<Map<String, Object>> events, final ReportingContext context) throws IOException {
-        final String elasticsearchUrl = context.getProperty(ELASTICSEARCH_URL).getValue();
+    @Override
+    public void indexEvents(final List<Map<String, Object>> events, final ReportingContext context) {
         final String elasticsearchIndex = context.getProperty(ELASTICSEARCH_INDEX).evaluateAttributeExpressions().getValue();
-        final ElasticsearchClient client = getElasticsearchClient(elasticsearchUrl);
         final List<String> processorTypesAllowlist =
                 Arrays.asList(context.getProperty(PROCESSORS_TYPES_ALLOWLIST).getValue().split(","));
 
@@ -161,7 +172,7 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
                         .document(preparedEvent)
                         .build();
                 try {
-                    client.index(indexRequest);
+                    esClient.index(indexRequest);
                 } catch (ElasticsearchException | IOException ex) {
                     getLogger().error("Error while indexing event {}", id, ex);
                 }
