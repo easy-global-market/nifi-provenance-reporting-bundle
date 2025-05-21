@@ -89,10 +89,9 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
 
     static final PropertyDescriptor IGNORED_HTTP_ERROR_CODES = new PropertyDescriptor.Builder().name("ignored-http-error-codes")
             .displayName("Ignored HTTP error codes")
-            .description("List of error codes that should not be counted as error by the HTTP error detection,"
-                    + "should be a coma separated list of error codes to ignore")
-            .defaultValue("").build();
-
+            .description("Specifies a comma-separated list of error codes that should not be counted as error by the HTTP error detection,")
+            .defaultValue("404")
+            .addValidator(StandardValidators.createListValidator(true, true, StandardValidators.NON_BLANK_VALIDATOR)).build();
 
     static final PropertyDescriptor CHECK_FOR_SCRIPTS_ERRORS = new PropertyDescriptor.Builder().name("check-for-scripts-errors")
             .displayName("Check for scripts errors")
