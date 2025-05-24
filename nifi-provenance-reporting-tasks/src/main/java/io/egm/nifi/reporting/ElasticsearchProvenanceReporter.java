@@ -19,12 +19,8 @@ package io.egm.nifi.reporting;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch.core.IndexRequest;
-import co.elastic.clients.json.jackson.JacksonJsonpMapper;
-import co.elastic.clients.transport.ElasticsearchTransport;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.HttpHost;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
@@ -34,11 +30,10 @@ import org.apache.nifi.controller.ConfigurationContext;
 import org.apache.nifi.expression.ExpressionLanguageScope;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.reporting.ReportingContext;
-import org.elasticsearch.client.RestClient;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -83,26 +78,23 @@ public class ElasticsearchProvenanceReporter extends AbstractProvenanceReporter 
             .build();
 
     private ElasticsearchClient esClient;
-    private ElasticsearchTransport esTransport;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @OnScheduled
-    public void createEsClient(final ConfigurationContext context) throws MalformedURLException {
+    public void createEsClient(final ConfigurationContext context) throws URISyntaxException {
         final String elasticsearchUrl = context.getProperty(ELASTICSEARCH_URL).getValue();
 
-        URL url = new URL(elasticsearchUrl);
-        RestClient restClient = RestClient.builder(new HttpHost(url.getHost(), url.getPort())).build();
-
-        // Create the transport with a Jackson mapper
-        esTransport = new RestClientTransport(restClient, new JacksonJsonpMapper());
-        esClient = new ElasticsearchClient(esTransport);
+        URI esUri = new URI(elasticsearchUrl);
+        esClient = ElasticsearchClient.of(builder ->
+            builder.host(esUri)
+        );
     }
 
     @OnStopped
     public void shutdown() {
-        if (esTransport != null) {
+        if (esClient != null) {
             try {
-                esTransport.close();
+                esClient.close();
             } catch (IOException e) {
                 getLogger().error("Error while closing Elasticsearch transport", e);
             }
