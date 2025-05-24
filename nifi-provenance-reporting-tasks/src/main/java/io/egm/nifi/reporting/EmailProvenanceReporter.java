@@ -163,7 +163,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
     @Override
     public List<PropertyDescriptor> getSupportedPropertyDescriptors() {
-        descriptors = super.getSupportedPropertyDescriptors();
+        final List<PropertyDescriptor> descriptors = super.getCommonPropertyDescriptors();
         descriptors.add(SMTP_HOSTNAME);
         descriptors.add(SMTP_PORT);
         descriptors.add(SMTP_AUTH);
@@ -316,8 +316,15 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
 
     private String getSpecificRecipientValue(final ReportingContext context, final Map<String, Object> event) {
         final String specificRecipientAttributeName = context.getProperty(SPECIFIC_RECIPIENT_ATTRIBUTE_NAME).getValue();
-        Map<String, String> eventPreviousAttributes = (Map<String, String>) event.get("previous_attributes");
-        return eventPreviousAttributes.get(specificRecipientAttributeName);
+        Map<String, String> previousAttributes =
+            (Map<String, String>) event.getOrDefault("previous_attributes", new HashMap<>());
+        if (previousAttributes.get(specificRecipientAttributeName) != null) {
+            return previousAttributes.get(specificRecipientAttributeName);
+        } else {
+            Map<String, String> updatedAttributes =
+                (Map<String, String>) event.getOrDefault("updated_attributes", new HashMap<>());
+            return updatedAttributes.get(specificRecipientAttributeName);
+        }
     }
 
     private String composeMessageContent(final Map<String, Object> event, Boolean groupSimilarErrors, int groupedEventsSize) {
@@ -434,7 +441,7 @@ public class EmailProvenanceReporter extends AbstractProvenanceReporter {
         final Message message = new MimeMessage(mailSession);
         InternetAddress[] inetAddressesArray;
         String specificRecipientAttributeValue = null;
-        if (event.containsKey("previous_attributes") && context.getProperty(SPECIFIC_RECIPIENT_ATTRIBUTE_NAME).getValue() != null) {
+        if (context.getProperty(SPECIFIC_RECIPIENT_ATTRIBUTE_NAME).getValue() != null) {
             specificRecipientAttributeValue = getSpecificRecipientValue(context, event);
         }
 
