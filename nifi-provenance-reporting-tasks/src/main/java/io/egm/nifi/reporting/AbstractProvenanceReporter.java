@@ -206,7 +206,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
                     source.put("component_id", componentId);
                     source.put(
                         "component_url",
-                        nifiUrl + "?processGroupId=" + processGroupId + "&componentsIds=" + componentId
+                        nifiUrl + "#/process-groups/" + processGroupId + "/processor/" + componentId
                     );
                 }
 
@@ -277,7 +277,7 @@ public abstract class AbstractProvenanceReporter extends AbstractReportingTask {
                 source.put("download_input_content_uri", downloadContentUri + "/input");
                 source.put("download_output_content_uri", downloadContentUri + "/output");
                 final String viewContentUri =
-                    urlPrefix + "/nifi-content-viewer/" +
+                    urlPrefix + "/nifi/#/content-viewer/external" +
                     "?ref=" + urlPrefix + "/nifi-api/provenance-events/" + e.getEventId() + "/content";
                 source.put("view_input_content_uri", viewContentUri + "/input");
                 source.put("view_output_content_uri", viewContentUri + "/output");
