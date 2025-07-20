@@ -1,0 +1,38 @@
+pipeline {
+    agent any
+    tools {
+        jdk 'JDK 21'
+    }
+    stages {
+        stage('Notify build in Slack') {
+            steps {
+                slackSend (color: '#D4DADF', message: "Started ${env.BUILD_URL}")
+            }
+        }
+        stage('Build, test and package') {
+            steps {
+                sh './mvnw -B package --file pom.xml'
+            }
+        }
+    }
+    post {
+        always {
+            archiveArtifacts artifacts: 'nifi-provenance-reporting-nar/target/nifi-provenance-reporting-nar-*.nar', onlyIfSuccessful: true
+        }
+        success {
+            script {
+                if (env.BRANCH_NAME == 'master')
+                    build job: '/NiFi.Prod.Builder', propagate: false
+                else if (env.BRANCH_NAME == 'develop')
+                    build job: '/NiFi.Dev.Builder', propagate: false
+            }
+            slackSend (color: '#36b37e', message: "Success: ${env.BUILD_URL} after ${currentBuild.durationString.replace(' and counting', '')}")
+        }
+        unstable {
+            slackSend (color: '#ff7f00', message: "Unstable: ${env.BUILD_URL} after ${currentBuild.durationString.replace(' and counting', '')}")
+        }
+        failure {
+            slackSend (color: '#FF0000', message: "Fail: ${env.BUILD_URL} after ${currentBuild.durationString.replace(' and counting', '')}")
+        }
+    }
+}
