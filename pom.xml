@@ -31,7 +31,7 @@
     <properties>
         <maven.compiler.target>21</maven.compiler.target>
         <maven.compiler.source>21</maven.compiler.source>
-        <!-- Skip enforcer as commons-logging (ES dependency) is banned by NiFi but used in this processor -->
+        <!-- Skip enforcer as commons-logging (ElasticSearch dependency) is banned by NiFi but used in this processor -->
         <enforcer.skip>true</enforcer.skip>
     </properties>
 
