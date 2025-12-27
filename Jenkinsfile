@@ -21,9 +21,7 @@ pipeline {
         }
         success {
             script {
-                if (env.BRANCH_NAME == 'master')
-                    build job: '/NiFi.Prod.Builder', propagate: false, wait: false
-                else if (env.BRANCH_NAME == 'develop')
+                if (env.BRANCH_NAME == 'develop')
                     build job: '/NiFi.Dev.Builder', propagate: false, wait: false
             }
             slackSend (color: '#36b37e', message: "Success: ${env.BUILD_URL} after ${currentBuild.durationString.replace(' and counting', '')}")
